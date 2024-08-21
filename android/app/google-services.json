@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "66340850988",
+    "project_id": "tiofy-rider",
+    "storage_bucket": "tiofy-rider.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:66340850988:android:fe64a534933b7e7a0f7089",
+        "android_client_info": {
+          "package_name": "com.tiofyrider"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMLZCW8KoMhPURdGTIEbl7V1SkE1_HXbw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
