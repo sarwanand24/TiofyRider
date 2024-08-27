@@ -27,7 +27,7 @@ export default function RiderDashboard(props) {
     const fetchUndeliveredOrders = async () => {
       try {
         const jwtToken = getAccessToken();
-        const response = await axios.get(`https://trioserver.onrender.com/api/v1/foodyOrder/getUndeliveredOrders`, {
+        const response = await axios.get(`https://trioserver.onrender.com/api/v1/foodyOrder/getRiderUndeliveredOrders`, {
           headers: { Authorization: `Bearer ${jwtToken}` },
         });
 
@@ -204,7 +204,7 @@ export default function RiderDashboard(props) {
 
   useEffect(() => {
     fetchOrders(); // Fetch orders initially
-    const interval = setInterval(fetchOrders, 10000); // Fetch orders every 10 seconds
+    const interval = setInterval(fetchOrders, 150000); // Fetch orders every 10 seconds
 
     return () => clearInterval(interval); // Clear interval on component unmount
   }, [refresh]);

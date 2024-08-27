@@ -21,8 +21,8 @@ function MapDirection({ route }) { // Destructuring orderId from props
 
   const [mapInfo, setMapInfo] = useState({
     User: { latitude: 0, longitude: 0 },
-    Restaurant: { latitude: 0, longitude: 0 },
-    Rider: { latitude: 0, longitude: 0, heading: 0 }
+    Restaurant: { latitude: 22.00987, longitude: 82.56786 },
+    Rider: { latitude: 22.3566, longitude: 82.6543, heading: 0 }
   });
   const [riderHeads, setRiderHeads] = useState(0);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
@@ -203,7 +203,7 @@ function MapDirection({ route }) { // Destructuring orderId from props
   const fetchRoute = async ({ start, end }) => {
     try {
         console.log('startend', start, end);
-        const response = await fetch(`http://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full`);
+        const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full`);
         const data = await response.json();
         const encodedPolyline = data.routes[0].geometry;
         const distance = data.routes[0].distance;
@@ -257,12 +257,15 @@ const handleArrivalAtRestaurant = async() => {
 
 const calculateEarning = async () => {
   console.log('startend', mapInfo.User, mapInfo.Restaurant);
-  const response1 = await fetch(`http://router.project-osrm.org/route/v1/driving/${mapInfo.Restaurant.longitude},${mapInfo.Restaurant.latitude};${mapInfo.User.longitude},${mapInfo.User.latitude}?overview=full`);
+  const response1 = await fetch(`https://router.project-osrm.org/route/v1/driving/${mapInfo.Restaurant.longitude},${mapInfo.Restaurant.latitude};${mapInfo.User.longitude},${mapInfo.User.latitude}?overview=full`);
   const data = await response1.json();
   const distance = data.routes[0].distance;
   const duration = data.routes[0].duration;
 
   const distanceInKm = (distance / 1000).toFixed(2);
+
+  console.log('distanceeeeee', distanceInKm, distance, distance/1000);
+  
 
   // Send distance to the server to get the calculated earning
   const response = await axios.post('https://trioserver.onrender.com/api/v1/riders/calculateEarning', {
@@ -274,6 +277,9 @@ const calculateEarning = async () => {
 
   const calculatedEarning = response.data.earning;
   const nonDecimalEarning = Math.floor(calculatedEarning);
+
+  console.log('Earninghhhgvsgdbdx', nonDecimalEarning);
+  
   // Update state and return
   setEarning(nonDecimalEarning);
   return nonDecimalEarning;

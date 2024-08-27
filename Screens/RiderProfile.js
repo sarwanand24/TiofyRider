@@ -49,7 +49,15 @@ const RiderProfile = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Image source={{ uri: riderData.profilePhoto }} style={styles.profilePhoto} />
+      <Image
+  source={{
+    uri: riderData.profilePhoto
+      ? riderData.profilePhoto.replace("http://", "https://")
+      : null
+  }}
+  style={styles.profilePhoto}
+/>
+
         <Text style={[styles.name, styles.glow]}>{riderData.riderName}</Text>
       </View>
 
@@ -87,7 +95,14 @@ const RiderProfile = () => {
         </View>
         <View style={styles.infoBox}>
           <Text style={styles.label}>Driving License:</Text>
-          <Image source={{ uri: riderData.drivingLiscense }} style={styles.licenseImage} />
+          <Image
+  source={{
+    uri: riderData.drivingLiscense
+      ? riderData.drivingLiscense.replace("http://", "https://")
+      : null
+  }}
+  style={styles.licenseImage}
+/>
         </View>
       </View>
 
