@@ -167,18 +167,6 @@ export default function RiderDashboard(props) {
         }));
         console.log('Processed Orders:', processedData);
         setOrders(processedData || []);
-        const orderInfos = processedData.map(order => ({
-          address: order.userAddress,
-          userId: order.userId,
-          restaurantId: order.restaurantId,
-          foodItems: order.foodItems,
-          totalItems: order.totalItems,
-          bill: order.bill,
-          restroEarning: order.restroEarning,
-          city: order.city,
-        }));
-        // Assuming you have a state to store this information
-        setUserInfo(orderInfos);
       } else {
         console.error('Error fetching orders:', data);
         Alert.alert('Error', 'Unable to fetch orders.');
@@ -204,7 +192,7 @@ export default function RiderDashboard(props) {
 
   useEffect(() => {
     fetchOrders(); // Fetch orders initially
-    const interval = setInterval(fetchOrders, 150000); // Fetch orders every 10 seconds
+    const interval = setInterval(fetchOrders, 10000); // Fetch orders every 10 seconds
 
     return () => clearInterval(interval); // Clear interval on component unmount
   }, [refresh]);
@@ -223,7 +211,7 @@ export default function RiderDashboard(props) {
     const rider = JSON.parse(riderData); // Ensure you parse the JSON data
     const riderName = rider?.riderName;
     console.log('Name', riderName);
-    
+    setUserInfo({userId: order.userId})
     // Emit the order data through the socket
     socket.emit('RiderAcceptedOrder', {
       riderId: order._id,
@@ -235,6 +223,7 @@ export default function RiderDashboard(props) {
       bill: order.bill,
       city: order.city,
       restroEarning: order.restroEarning,
+      riderEarning: order.riderEarning,
       riderName
     });
   
@@ -268,6 +257,7 @@ export default function RiderDashboard(props) {
       bill: order.bill,
       city: order.city,
       restroEarning: order.restroEarning,
+      riderEarning: order.riderEarning,
       riderName
     });
   
@@ -276,41 +266,53 @@ export default function RiderDashboard(props) {
   };
   
 
-  socket.on('RiderOrderInform', async (data) => {
-    //do if data.riderId equals this rider._id then only execute next lines
-    const riderData = await AsyncStorage.getItem('Riderdata');
-    const rider = JSON.parse(riderData); 
-    console.log('test', data.riderId, rider._id);
-    if(data.riderId == rider._id){
-      console.log('checked cleared');
-      setUserInfo({
-        address: data.data.userAddress,
-        userId: data.data.userId,
-        restaurantId: data.restaurantId,
-        foodItems: data.foodItems,
-        totalItems: data.totalItems,
-        bill: data.bill,
-        restroEarning: data.restroEarning,
-        city: data.city
-      });
-    }
-  });
+  // socket.on('RiderOrderInform', async (data) => {
+  //   //do if data.riderId equals this rider._id then only execute next lines
+  //   const riderData = await AsyncStorage.getItem('Riderdata');
+  //   const rider = JSON.parse(riderData); 
+  //   console.log('test', data.riderId, rider._id);
+  //   if(data.riderId == rider._id){
+  //     console.log('checked cleared');
+  //     setUserInfo({
+  //       address: data.data.userAddress,
+  //       userId: data.data.userId,
+  //       restaurantId: data.restaurantId,
+  //       foodItems: data.foodItems,
+  //       totalItems: data.totalItems,
+  //       bill: data.bill,
+  //       restroEarning: data.restroEarning,
+  //       riderEarning: data.riderEarning,
+  //       city: data.city
+  //     });
+  //   }
+  // });
 
   console.log('UserINfo', userInfo);
   
-  socket.on('OrderAcceptedbyRider', async (data) => {
-    setLoading(false);
-    setOrderId(data.orderId);
-    console.log('Go to Map--------------------');
-    setMap(true)
-  });
+  // Simulate receiving socket data
+  useEffect(() => { // Ensure to set up your socket connection properly
+    socket.on('OrderAcceptedbyRider', (data) => {
+      setOrderId(data.orderId);
+      console.log('Go to Map--------------------');
+      setMap(true);
+    });
 
-  if(loading){
-    return <Loading />
-  }
+    // Clean up socket on unmount
+    return () => {
+      socket.off('OrderAcceptedbyRider');
+    };
+  }, []);
+  
+  // Navigate to MapDirection screen when `orderId` is set and `map` is true
+  useEffect(() => {
+    if (map && orderId) {
+      setLoading(false);
+      props.navigation.push("MapDirection", { orderId, userInfo, reachedRestro: false });
+    }
+  }, [map, orderId]);
 
-  if(map){
-    props.navigation.push("MapDirection", {orderId: orderId, userInfo, reachedRestro: false})
+  if (loading) {
+    return <Loading />;
   }
 
   return (
@@ -348,6 +350,7 @@ export default function RiderDashboard(props) {
                       </View>
                     ))}
                     <Text style={styles.orderText}>Bill: Rs {order.bill}</Text>
+                    <Text style={styles.orderText}>Earning: Rs {order.riderEarning}</Text>
                   </>
                 )}
                 {order.orderOf === 'Cab' && (

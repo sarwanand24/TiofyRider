@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Loading from './Loading';
 import DatePicker from 'react-native-date-picker';
 
-const Foody = () => {
+const Food = () => {
     const [rideHistory, setRideHistory] = useState([]);
     const [filteredHistory, setFilteredHistory] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -215,4 +215,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default Foody;
+export default Food;

@@ -31,7 +31,7 @@ const SplashScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Image source={require('../assets/logo.jpeg')} style={styles.logo} />
+      <Image source={require('../assets/TiofyLogo.png')} style={styles.logo} />
     </View>
   );
 };

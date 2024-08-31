@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, PermissionsAndroid, Platform, Dimensions, StyleSheet, Modal, Image, Animated, PanResponder, Alert } from 'react-native';
-import Slider from '@react-native-community/slider'; // Importing Slider
+import { View, Text, PermissionsAndroid, Platform, Dimensions, StyleSheet, Button, TextInput, Modal, Image, Animated, PanResponder, Alert } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import polyline from '@mapbox/polyline';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import socket from '../utils/Socket';
-import axios from 'axios';
+import socket from '../../utils/Socket';
 import { useNavigation } from '@react-navigation/native';
+import Loading from '../Loading';
 
 const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
@@ -16,13 +15,13 @@ const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 
 function MapDirection({ route }) { // Destructuring orderId from props
 
-    const { orderId, userInfo, reachedRestro } = route.params;
-    const navigation = useNavigation();
+  const { orderId, userInfo, reachedRestro } = route.params;
+  const navigation = useNavigation();
 
   const [mapInfo, setMapInfo] = useState({
     User: { latitude: 0, longitude: 0 },
-    Restaurant: { latitude: 22.00987, longitude: 82.56786 },
-    Rider: { latitude: 22.3566, longitude: 82.6543, heading: 0 }
+    Restaurant: { latitude: 0, longitude: 0 },
+    Rider: { latitude: 0, longitude: 0, heading: 0 }
   });
   const [riderHeads, setRiderHeads] = useState(0);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
@@ -34,6 +33,11 @@ function MapDirection({ route }) { // Destructuring orderId from props
   const [earning, setEarning] = useState(0);
   const [popup, setPopup] = useState(false);
   const [bounceValue] = useState(new Animated.Value(0));
+  const [loading, setLoading] = useState(false);
+  const [otp, setOtp] = useState(0);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [enteredOtp, setEnteredOtp] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   React.useEffect(() => {
     if (popup) {
@@ -123,7 +127,7 @@ function MapDirection({ route }) { // Destructuring orderId from props
 
   useEffect(() => {
     const updateRiderLocation = async (latitude, longitude) => {
-        const token = await AsyncStorage.getItem('token');
+      const token = await AsyncStorage.getItem('token');
       try {
         const response = await fetch('https://trioserver.onrender.com/api/v1/riders/update-rider-location', {
           method: 'POST',
@@ -152,6 +156,7 @@ function MapDirection({ route }) { // Destructuring orderId from props
 
   const fetchMapDetails = async () => {
     try {
+      setLoading(true)
       const response = await fetch(`https://trioserver.onrender.com/api/v1/foodyOrder/order/${orderId}`, {
         method: 'GET',
         headers: {
@@ -164,9 +169,13 @@ function MapDirection({ route }) { // Destructuring orderId from props
       }
 
       const data = await response.json();
-      const userLatLng = data.data[0]?.User[0] || { latitude: 0, longitude: 0 };
-      const restaurantLatLng = data.data[0]?.Restaurant[0] || { latitude: 0, longitude: 0 };
-      const riderLatLng = data.data[0]?.Rider[0] || mapInfo.Rider;
+      const orderData = data.data;
+      // Extract User, Restaurant, and Rider details
+      const userLatLng = orderData.User[0] || { latitude: 0, longitude: 0 };
+      const restaurantLatLng = orderData.Restaurant[0] || { latitude: 0, longitude: 0 };
+      const riderLatLng = orderData.Rider[0] || mapInfo.Rider;
+
+      setEarning(data.data?.riderEarning)
 
       setMapInfo({
         User: {
@@ -195,181 +204,203 @@ function MapDirection({ route }) { // Destructuring orderId from props
         });
       }
 
+      setOtp(data.data?.otp)
+
     } catch (error) {
       console.error('Error in fetching map details:', error);
+    } finally {
+      setLoading(false)
     }
   };
 
   const fetchRoute = async ({ start, end }) => {
     try {
-        console.log('startend', start, end);
-        const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full`);
-        const data = await response.json();
-        const encodedPolyline = data.routes[0].geometry;
-        const distance = data.routes[0].distance;
-        const duration = data.routes[0].duration;
+      console.log('startend', start, end);
+      const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full`);
+      const data = await response.json();
+      const encodedPolyline = data.routes[0].geometry;
+      const distance = data.routes[0].distance;
+      const duration = data.routes[0].duration;
 
-        setRouteDistance(distance);
-        setRouteDuration(duration);
+      if (distance === 0 || duration === 0) {
+        console.warn('The start and end locations are the same or too close to calculate a meaningful route.');
+        return;
+      }
 
-        const coordinates = polyline.decode(encodedPolyline).map(point => ({
-            latitude: point[0],
-            longitude: point[1],
-        }));
+      setRouteDistance(distance);
+      setRouteDuration(duration);
+      const coordinates = polyline.decode(encodedPolyline).map(point => ({
+        latitude: point[0],
+        longitude: point[1],
+      }));
 
-        setRouteCoordinates(coordinates);
+      setRouteCoordinates(coordinates);
     } catch (error) {
-        console.error('Error fetching route:', error.message);
+      console.error('Error fetching route:', error.message);
     }
-};
+  };
 
+  console.log('mapinfos', mapInfo.User, mapInfo.Restaurant, mapInfo.Rider);
+  
 
-const handleArrivalAtRestaurant = async() => {
+  const handleArrivalAtRestaurant = async () => {
     if (!hasArrivedAtRestaurant) {
-        setIsAtRestaurant(true);
-        console.log('Arrived Restro---------------');
-        setHasArrivedAtRestaurant(true);
-        fetchRoute({
-            start: { latitude: mapInfo.Rider.latitude, longitude: mapInfo.Rider.longitude },
-            end: { latitude: mapInfo.User.latitude, longitude: mapInfo.User.longitude }
-          });
-          try {
-            const response = await fetch(`https://trioserver.onrender.com/api/v1/foodyOrder/order-update/${orderId}`, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({orderStatus: 'Rider has picked your order from restaurant' }),
-            });
-      
-            if (!response.ok) {
-              throw new Error(`Error updating order status: ${response.statusText}`);
-          }
+      setIsAtRestaurant(true);
+      console.log('Arrived Restro---------------');
+      setHasArrivedAtRestaurant(true);
+      await fetchRoute({
+        start: { latitude: mapInfo.Rider.latitude, longitude: mapInfo.Rider.longitude },
+        end: { latitude: mapInfo.User.latitude, longitude: mapInfo.User.longitude }
+      });
+      try {
+        const response = await fetch(`https://trioserver.onrender.com/api/v1/foodyOrder/order-update/${orderId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ orderStatus: 'Rider has picked your order from restaurant' }),
+        });
 
-          const result = await response.json();
-          console.log('Order status for restro pickup updated successfully:', result);
-          } catch (error) {
-            console.error('Error in updating OrderStatus for restro pickup:', error);
-            Alert.alert('Error', 'Unable to update orderStatus of restro pickup.');
-          }
+        if (!response.ok) {
+          throw new Error(`Error updating order status: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('Order status for restro pickup updated successfully:', result);
+      } catch (error) {
+        console.error('Error in updating OrderStatus for restro pickup:', error);
+        Alert.alert('Error', 'Unable to update orderStatus of restro pickup.');
+      }
     }
-};
+  };
 
-const calculateEarning = async () => {
-  console.log('startend', mapInfo.User, mapInfo.Restaurant);
-  const response1 = await fetch(`https://router.project-osrm.org/route/v1/driving/${mapInfo.Restaurant.longitude},${mapInfo.Restaurant.latitude};${mapInfo.User.longitude},${mapInfo.User.latitude}?overview=full`);
-  const data = await response1.json();
-  const distance = data.routes[0].distance;
-  const duration = data.routes[0].duration;
+  // const calculateEarning = async () => {
+  //   console.log('startend', mapInfo.User, mapInfo.Restaurant);
+  //   const response1 = await fetch(`https://router.project-osrm.org/route/v1/driving/${mapInfo.Restaurant.longitude},${mapInfo.Restaurant.latitude};${mapInfo.User.longitude},${mapInfo.User.latitude}?overview=full`);
+  //   const data = await response1.json();
+  //   const distance = data.routes[0].distance;
+  //   const duration = data.routes[0].duration;
 
-  const distanceInKm = (distance / 1000).toFixed(2);
+  //   const distanceInKm = (distance / 1000).toFixed(2);
 
-  console.log('distanceeeeee', distanceInKm, distance, distance/1000);
-  
+  //   console.log('distanceeeeee', distanceInKm, distance, distance/1000);
 
-  // Send distance to the server to get the calculated earning
-  const response = await axios.post('https://trioserver.onrender.com/api/v1/riders/calculateEarning', {
-    distanceInKm,
-  });
 
-  console.log('response', response.data.earning);
-  
+  //   // Send distance to the server to get the calculated earning
+  //   const response = await axios.post('https://trioserver.onrender.com/api/v1/riders/calculateEarning', {
+  //     distanceInKm,
+  //   });
 
-  const calculatedEarning = response.data.earning;
-  const nonDecimalEarning = Math.floor(calculatedEarning);
+  //   console.log('response', response.data.earning);
 
-  console.log('Earninghhhgvsgdbdx', nonDecimalEarning);
-  
-  // Update state and return
-  setEarning(nonDecimalEarning);
-  return nonDecimalEarning;
-};
 
-const showPopup = (riderEarning) => {
-  console.log('earningggg', riderEarning);
-  setPopup(true);
-  // Alert.alert(`Fuckk you earned RS ${riderEarning}`)
-};
+  //   const calculatedEarning = response.data.earning;
+  //   const nonDecimalEarning = Math.floor(calculatedEarning);
 
-const handleOrderDelivered = async () => {
-    if (!hasDeliveredOrder) {
+  //   console.log('Earninghhhgvsgdbdx', nonDecimalEarning);
+
+  //   // Update state and return
+  //   setEarning(nonDecimalEarning);
+  //   return nonDecimalEarning;
+  // };
+
+  const showPopup = (riderEarning) => {
+    console.log('earningggg', riderEarning);
+    setPopup(true);
+    // Alert.alert(`Fuckk you earned RS ${riderEarning}`)
+  };
+
+  const handleOrderDelivered = async () => {
+    setIsModalVisible(true); 
+  };
+
+  const verifyOtpAndDeliverOrder = async () => {
+    console.log('enteredOtp:', enteredOtp, otp);
+    if (enteredOtp == otp) {
+      setIsModalVisible(false)
+      if (!hasDeliveredOrder) {
         setHasDeliveredOrder(true);
         console.log('Order delivered!');
-        const riderEarning = await calculateEarning();
-        console.log('RiderEarning', riderEarning);
+        console.log('RiderEarning', earning);
         try {
-            const response = await fetch(`https://trioserver.onrender.com/api/v1/foodyOrder/order/${orderId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
-                },
-                body: JSON.stringify({ orderStatus: 'Delivered', riderEarning: riderEarning }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Error updating order status: ${response.statusText}`);
-            }
-
-            const result = await response.json();
-            console.log('Order status updated successfully:', result);
-            // Show the popup message with the earning
-            showPopup(riderEarning);
-            setTimeout(() => {
-              navigation.replace('RiderDashboard'); // Replace 'DifferentScreen' with your target screen name
-          }, 6000);
+          const response = await fetch(`https://trioserver.onrender.com/api/v1/foodyOrder/order/${orderId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ orderStatus: 'Delivered', riderEarning: earning }),
+          });
+  
+          if (!response.ok) {
+            throw new Error(`Error updating order status: ${response.statusText}`);
+          }
+  
+          const result = await response.json();
+          console.log('Order status updated successfully:', result);
+          // Show the popup message with the earning
+          showPopup(earning);
+          setTimeout(() => {
+            navigation.replace('RiderDashboard'); // Replace 'DifferentScreen' with your target screen name
+          }, 4000);
         } catch (error) {
-            console.error('Failed to update order status:', error);
+          console.error('Failed to update order status:', error);
         }
+      }
+    } else {
+      setErrorMessage('Invalid OTP. Please try again.');
     }
-};
+  };
 
-
-const panResponderArrival = PanResponder.create({
+  const panResponderArrival = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
     onPanResponderMove: Animated.event(
-        [null, { dx: slideValue }],
-        { useNativeDriver: false }
+      [null, { dx: slideValue }],
+      { useNativeDriver: false }
     ),
     onPanResponderRelease: (e, { dx }) => {
-        if (dx > width * 0.4) {
-            handleArrivalAtRestaurant();
-            Animated.spring(slideValue, {
-                toValue: 0,
-                useNativeDriver: false,
-            }).start();
-        } else {
-            Animated.spring(slideValue, {
-                toValue: 0,
-                useNativeDriver: false,
-            }).start();
-        }
+      if (dx > width * 0.4) {
+        handleArrivalAtRestaurant();
+        Animated.spring(slideValue, {
+          toValue: 0,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        Animated.spring(slideValue, {
+          toValue: 0,
+          useNativeDriver: false,
+        }).start();
+      }
     },
-});
+  });
 
-const panResponderDelivery = PanResponder.create({
+  const panResponderDelivery = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
     onPanResponderMove: Animated.event(
-        [null, { dx: slideValue }],
-        { useNativeDriver: false }
+      [null, { dx: slideValue }],
+      { useNativeDriver: false }
     ),
     onPanResponderRelease: (e, { dx }) => {
-        if (dx > width * 0.4) {
-            handleOrderDelivered();
-            Animated.spring(slideValue, {
-                toValue: 0,
-                useNativeDriver: false,
-            }).start();
-        } else {
-            Animated.spring(slideValue, {
-                toValue: 0,
-                useNativeDriver: false,
-            }).start();
-        }
+      if (dx > width * 0.4) {
+        handleOrderDelivered();
+        Animated.spring(slideValue, {
+          toValue: 0,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        Animated.spring(slideValue, {
+          toValue: 0,
+          useNativeDriver: false,
+        }).start();
+      }
     },
-});
+  });
+
+  if (loading) {
+    return <Loading />
+  }
 
 
   return (
@@ -413,7 +444,7 @@ const panResponderDelivery = PanResponder.create({
         {routeCoordinates.length > 0 && (
           <Polyline
             coordinates={routeCoordinates}
-            strokeColor="#FF5733"
+            strokeColor="blue"
             strokeWidth={5}
           />
         )}
@@ -424,42 +455,64 @@ const panResponderDelivery = PanResponder.create({
           <Text style={styles.infoText}>Duration: {(routeDuration / 60).toFixed(0)} mins</Text>
         </View>
       )}
-           <View style={styles.sliderContainer}>
-                    <Animated.View
-                        {...(isAtRestaurant ? panResponderDelivery.panHandlers : panResponderArrival.panHandlers)}
-                        style={[
-                            styles.slider,
-                            {
-                                transform: [{ translateX: slideValue }],
-                                backgroundColor: isAtRestaurant ? '#f80c4c' : '#f1c40f',
-                            },
-                        ]}
-                    >
-                        <Text style={styles.sliderText}>
-                            {isAtRestaurant ? 'Delivered Order?' : 'Arrived at Restaurant?'}
-                        </Text>
-                    </Animated.View>
-                </View>
-                <Modal
-    transparent={true}
-    animationType="fade"
-    visible={popup}
-  >
-    <View style={styles.modalContainer}>
-      <Animated.View
-        style={[
-          styles.modalContent,
-          {
-            transform: [{ scale: bounceValue }],
-          },
-        ]}
+      <View style={styles.sliderContainer}>
+        <Animated.View
+          {...(isAtRestaurant ? panResponderDelivery.panHandlers : panResponderArrival.panHandlers)}
+          style={[
+            styles.slider,
+            {
+              transform: [{ translateX: slideValue }],
+              backgroundColor: isAtRestaurant ? '#f80c4c' : '#f1c40f',
+            },
+          ]}
+        >
+          <Text style={styles.sliderText}>
+            {isAtRestaurant ? 'Delivered Order?' : 'Arrived at Restaurant?'}
+          </Text>
+        </Animated.View>
+      </View>
+      <Modal
+        transparent={true}
+        animationType="fade"
+        visible={popup}
       >
-        <Text style={styles.modalTitle}>🎉 Awesome Job! 🎉</Text>
-        <Text style={styles.modalText}>You’ve just earned:</Text>
-        <Text style={styles.modalEarning}>Rs {earning}</Text>
-      </Animated.View>
-    </View>
-  </Modal>
+        <View style={styles.modalContainer}>
+          <Animated.View
+            style={[
+              styles.modalContent,
+              {
+                transform: [{ scale: bounceValue }],
+              },
+            ]}
+          >
+            <Text style={styles.modalTitle}>🎉 Awesome Job! 🎉</Text>
+            <Text style={styles.modalText}>You’ve just earned:</Text>
+            <Text style={styles.modalEarning}>Rs {earning}</Text>
+          </Animated.View>
+        </View>
+      </Modal>
+      <Modal
+        visible={isModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Enter OTP</Text>
+            <TextInput
+              style={styles.input}
+              value={enteredOtp}
+              onChangeText={(text) => setEnteredOtp(text)}
+              keyboardType="numeric"
+              maxLength={4}
+              placeholder="Enter 4-digit OTP"
+            />
+            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+            <Button title="Submit OTP" onPress={verifyOtpAndDeliverOrder} />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -556,6 +609,10 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontSize: 16,
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
   },
 });
 
