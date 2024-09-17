@@ -123,7 +123,7 @@ const Signup = (props) => {
     if (text.length >= 2) {
       try {
         const response = await axios.get(
-          `http://api.geonames.org/searchJSON?name_startsWith=${text}&maxRows=10&username=sarwanand4`
+          `https://api.geonames.org/searchJSON?name_startsWith=${text}&maxRows=10&username=sarwanand4`
         );
         const { geonames } = response.data;
         setCitySuggestions(geonames || []);

@@ -449,6 +449,7 @@ function MapDirection({ route }) { // Destructuring orderId from props
           />
         )}
       </MapView>
+      
       {routeDistance && routeDuration && (
         <View style={styles.routeInfo}>
           <Text style={styles.infoText}>Distance: {(routeDistance / 1000).toFixed(2)} km</Text>
