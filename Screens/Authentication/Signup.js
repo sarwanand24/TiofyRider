@@ -123,10 +123,19 @@ const Signup = (props) => {
     if (text.length >= 2) {
       try {
         const response = await axios.get(
-          `https://api.geonames.org/searchJSON?name_startsWith=${text}&maxRows=10&username=sarwanand4`
-        );
-        const { geonames } = response.data;
-        setCitySuggestions(geonames || []);
+          `https://nominatim.openstreetmap.org/search`, {
+              params: {
+                  q: text,
+                  format: 'json',
+                  addressdetails: 1,
+                  limit: 10,
+              },
+              headers: {
+                  'User-Agent': 'TiofyRestaurant/1.0'  // Replace with your app's name
+              }
+          }
+      );
+      setCitySuggestions(response.data || []);
       } catch (error) {
         console.error('Error fetching city data: ', error);
       }
@@ -136,7 +145,7 @@ const Signup = (props) => {
   };
 
   const handleCitySelection = (selectedCity) => {
-    const formattedCity = `${selectedCity.name}, ${selectedCity.adminName1}, ${selectedCity.countryName}`;
+    const formattedCity = `${selectedCity.name}, ${selectedCity.address.state}, ${selectedCity.address.country}`;
     setCity(formattedCity);
     setQuery(formattedCity);
     setCitySuggestions([]); // Clear suggestions after selection
@@ -240,11 +249,11 @@ const Signup = (props) => {
         defaultValue={query}
         onChangeText={fetchCities}
         flatListProps={{
-          keyExtractor: (item) => item.geonameId.toString(), // Ensure unique key for each item
+          keyExtractor: (item) => item.place_id.toString(), // Ensure unique key for each item
           renderItem: ({ item }) => (
             <TouchableOpacity onPress={() => handleCitySelection(item)}>
               <Text style={styles.suggestionItem}>
-                {item.name}, {item.adminName1}, {item.countryName}
+              {item.name}, {item.address.state}, {item.address.country}
               </Text>
             </TouchableOpacity>
           ),

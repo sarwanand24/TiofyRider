@@ -1,4 +1,3 @@
-// auth.js
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
@@ -16,13 +15,14 @@ export const isTokenExpired = (token) => {
 // Function to refresh the token
 export const refreshToken = async () => {
   try {
-    const refreshToken = await AsyncStorage.getItem('token');
+    const StringRiderdata = await AsyncStorage.getItem("Riderdata");
+    const Riderdata = JSON.parse(StringRiderdata);
+    
     const response = await axios.post('https://trioserver.onrender.com/api/v1/riders/refresh-token', {
-      refreshToken,
+       rider: Riderdata._id,
     });
-    console.log(response.data.data.accessToken);
-    await AsyncStorage.setItem('token', response.data.data.accessToken);
-    return response.data.data.accessToken;
+    await AsyncStorage.setItem('token', response.data.data.refreshToken);
+    return response.data.data.refreshToken;
   } catch (error) {
     console.error('Failed to refresh token', error);
     // Handle error (e.g., redirect to login)

@@ -7,10 +7,11 @@ import Login from './Screens/Authentication/Login';
 import Signup from './Screens/Authentication/Signup';
 import AuthScreen from './Screens/Authentication/AuthScreen'; // Import the new AuthScreen component
 import RiderDashboard from './Screens/RiderDashboard';
-import MapDirection from './Screens/Food/MapDirection';
+import FoodMapDirection from './Screens/Food/FoodMapDirection';
 import RiderProfile from './Screens/RiderProfile';
 import Food from './Screens/Food/Food';
 import Loading from './Screens/Loading';
+import CyrMapDirection from './Screens/Cyr/CyrMapDirection';
 
 const Stack = createStackNavigator();
 
@@ -28,7 +29,8 @@ const App = () => {
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="Signup" component={Signup} />
         <Stack.Screen name="RiderDashboard" component={RiderDashboard} />
-        <Stack.Screen name="MapDirection" component={MapDirection} />
+        <Stack.Screen name="FoodMapDirection" component={FoodMapDirection} />
+        <Stack.Screen name="CyrMapDirection" component={CyrMapDirection} />
         <Stack.Screen name="RiderProfile" component={RiderProfile} />
         <Stack.Screen name="Food" component={Food} />
         <Stack.Screen name="Loading" component={Loading} />

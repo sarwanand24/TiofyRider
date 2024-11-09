@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Loading from './Loading';
+import Loading from '../Loading';
 import DatePicker from 'react-native-date-picker';
 
 const Food = () => {

@@ -20,7 +20,9 @@ export default function RiderDashboard(props) {
   const [loading, setLoading] = useState(false);
   const [map, setMap] = useState(false);
   const [undeliveredOrders, setUndeliveredOrders] = useState([]);
-
+  const [undeliveredCyrOrders, setUndeliveredCyrOrders] = useState([]);
+  const [orderOf, setOrderOf] = useState('');
+// after accepting each order make rider unavailable and make it available after completing that order
   const drawer = React.useRef(null);
 
   useEffect(() => {
@@ -28,16 +30,33 @@ export default function RiderDashboard(props) {
       try {
         const jwtToken = getAccessToken();
         const response = await axios.get(`https://trioserver.onrender.com/api/v1/foodyOrder/getRiderUndeliveredOrders`, {
-          headers: { Authorization: `Bearer ${jwtToken}` },
+          header: { Authorization: `Bearer ${jwtToken}` },
         });
 
         setUndeliveredOrders(response.data);
       } catch (error) {
-        console.error('Error fetching orders:', error);
+        console.error('Error fetching orders Nikhil:', error);
       }
     };
 
     fetchUndeliveredOrders();
+  }, []);
+
+  useEffect(() => {
+    const fetchUndeliveredCyrOrders = async () => {
+      try {
+        const jwtToken = getAccessToken();
+        const response = await axios.get(`https://trioserver.onrender.com/api/v1/cyrOrder/getRiderUndeliveredOrders`, {
+          header: { Authorization: `Bearer ${jwtToken}` },
+        });
+
+        setUndeliveredCyrOrders(response.data);
+      } catch (error) {
+        console.error('Error fetching orders Rani:', error);
+      }
+    };
+
+    fetchUndeliveredCyrOrders();
   }, []);
 
 
@@ -160,11 +179,21 @@ export default function RiderDashboard(props) {
 
       const data = await response.json();
       if (response.ok) {
-        console.log('order info', data.data);
-        const processedData = data.data?.map(order => ({
-          ...order,
-          foodItems: Array.isArray(order.foodItems) ? order.foodItems : [],
-        }));
+        console.log('order info', data.data); // from here check whether order belongs to food, cyr or any other
+        const processedData = data.data?.map(order => {
+          // Check if orderOf is "Foody" or "Cyr"
+          if (order.orderOf === 'Foody') {
+            // Process "Foody" orders as needed
+            return {
+              ...order,
+              foodItems: Array.isArray(order.foodItems) ? order.foodItems : [],
+            };
+          } else if (order.orderOf === 'Cyr') {
+            // For "Cyr" orders, return the order as it is
+            return order;
+          }
+          return null; // or handle any other cases if needed
+        }).filter(order => order !== null); // Filter out any null values
         console.log('Processed Orders:', processedData);
         setOrders(processedData || []);
       } else {
@@ -213,20 +242,30 @@ export default function RiderDashboard(props) {
     console.log('Name', riderName);
     setUserInfo({userId: order.userId})
     // Emit the order data through the socket
-    socket.emit('RiderAcceptedOrder', {
-      riderId: order._id,
-      userAddress: order.userAddress,
-      userId: order.userId,
-      restaurantId: order.restaurantId,
-      foodItems: order.foodItems,
-      totalItems: order.totalItems,
-      bill: order.bill,
-      city: order.city,
-      restroEarning: order.restroEarning,
-      riderEarning: order.riderEarning,
-      riderName
-    });
-  
+    if (order.orderOf == 'Foody') {
+      socket.emit('RiderAcceptedOrder', {
+        riderId: order._id,
+        userAddress: order.userAddress,
+        userId: order.userId,
+        restaurantId: order.restaurantId,
+        foodItems: order.foodItems,
+        totalItems: order.totalItems,
+        bill: order.bill,
+        city: order.city,
+        restroEarning: order.restroEarning,
+        riderEarning: order.riderEarning,
+        riderName
+      });
+    }
+    else if(order.orderOf == 'Cyr') {
+      socket.emit('RiderAcceptedCyrOrder', {
+        orderId: order._id,
+        userId: order.userId,
+        otp: order.otp,
+        riderEarning: order.riderEarning,
+      });
+    }
+
     console.log('Emitted RiderAcceptedOrder:', order);
     setLoading(true);
     setRefresh(true); // Trigger refresh or update state as needed
@@ -247,19 +286,30 @@ export default function RiderDashboard(props) {
     const riderName = rider?.riderName;
   
     // Emit the order data through the socket
-    socket.emit('RiderRejectedOrder', {
-      riderId: order._id,
-      userAddress: order.userAddress,
-      userId: order.userId,
-      restaurantId: order.restaurantId,
-      foodItems: order.foodItems,
-      totalItems: order.totalItems,
-      bill: order.bill,
-      city: order.city,
-      restroEarning: order.restroEarning,
-      riderEarning: order.riderEarning,
-      riderName
-    });
+    if (order.orderOf == 'Foody') {
+      socket.emit('RiderRejectedOrder', {
+        riderId: order._id,
+        userAddress: order.userAddress,
+        userId: order.userId,
+        restaurantId: order.restaurantId,
+        foodItems: order.foodItems,
+        totalItems: order.totalItems,
+        bill: order.bill,
+        city: order.city,
+        restroEarning: order.restroEarning,
+        riderEarning: order.riderEarning,
+        riderName
+      });
+    }
+    else if(order.orderOf == 'Cyr') {
+      socket.emit('RiderRejectedCyrOrder', {
+        orderId: order._id,
+        userId: order.userId,
+        otp: order.otp,
+        city: order.fromLocation?.city,
+        vehicleType: order.vehicleType,
+      });
+    }
   
     console.log('Emitted RiderRejectedOrder:', order);
     setRefresh(true); // Trigger refresh or update state as needed
@@ -292,6 +342,7 @@ export default function RiderDashboard(props) {
   // Simulate receiving socket data
   useEffect(() => { // Ensure to set up your socket connection properly
     socket.on('OrderAcceptedbyRider', (data) => {
+      setOrderOf('Foody')
       setOrderId(data.orderId);
       console.log('Go to Map--------------------');
       setMap(true);
@@ -302,12 +353,31 @@ export default function RiderDashboard(props) {
       socket.off('OrderAcceptedbyRider');
     };
   }, []);
+
+  useEffect(() => { // Ensure to set up your socket connection properly
+    socket.on('CyrRideAcceptedbyRider', (data) => {
+      setOrderOf('Cyr')
+      setOrderId(data.orderId);
+      console.log('Go to Map--------------------');
+      setMap(true);
+    });
+
+    // Clean up socket on unmount
+    return () => {
+      socket.off('CyrRideAcceptedbyRider');
+    };
+  }, []);
   
   // Navigate to MapDirection screen when `orderId` is set and `map` is true
   useEffect(() => {
     if (map && orderId) {
       setLoading(false);
-      props.navigation.push("MapDirection", { orderId, userInfo, reachedRestro: false });
+      if(orderOf == 'Foody'){
+        props.navigation.push("FoodMapDirection", { orderId, userInfo, reachedRestro: false });
+      }
+      else if(orderOf == 'Cyr'){
+        props.navigation.push("CyrMapDirection", { orderId, userInfo });
+      }
     }
   }, [map, orderId]);
 
@@ -353,12 +423,12 @@ export default function RiderDashboard(props) {
                     <Text style={styles.orderText}>Earning: Rs {order.riderEarning}</Text>
                   </>
                 )}
-                {order.orderOf === 'Cab' && (
+                {order.orderOf === 'Cyr' && (
                   <>
-                    <Text style={styles.orderText}>From: {order.fromLocation}</Text>
-                    <Text style={styles.orderText}>To: {order.toLocation}</Text>
+                    <Text style={styles.orderText}>From: {order.fromLocation?.placeName}</Text>
+                    <Text style={styles.orderText}>To: {order.toLocation?.placeName}</Text>
                     <Text style={styles.orderText}>Distance: {order.distance} km</Text>
-                    <Text style={styles.orderText}>Bill: ${order.bill}</Text>
+                    <Text style={styles.orderText}>Earnings: Rs {order.bill}</Text>
                   </>
                 )}
                 {order.orderOf === 'Hotel' && (
@@ -417,7 +487,7 @@ export default function RiderDashboard(props) {
           key={order._id}
           style={styles.orderBox}
           onPress={() =>
-            props.navigation.push('MapDirection', {
+            props.navigation.push('FoodMapDirection', {
               orderId: order._id,
               userId: order.orderedBy,
               reachedRestro: false
@@ -430,6 +500,24 @@ export default function RiderDashboard(props) {
           <Text style={styles.orderText}>Bill: {order.bill}</Text>
         </TouchableOpacity>
       ))}
+
+    {undeliveredCyrOrders.map((order) => (
+        <TouchableOpacity
+          key={order._id}
+          style={styles.orderBox}
+          onPress={() =>
+            props.navigation.push('CyrMapDirection', {
+              orderId: order._id,
+              userId: order.bookedBy
+            })
+          }
+        >
+            <Text style={styles.orderText}>Pending Ride from CYR</Text>
+          <Text style={styles.orderText}>Order ID: {order._id}</Text>
+          <Text style={styles.orderText}>Earning: {order.riderEarning}</Text>
+        </TouchableOpacity>
+      ))}
+
       </ScrollView>
     </DrawerLayoutAndroid>
   );

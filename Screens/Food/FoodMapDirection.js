@@ -13,7 +13,7 @@ const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.04;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 
-function MapDirection({ route }) { // Destructuring orderId from props
+function FoodMapDirection({ route }) { // Destructuring orderId from props
 
   const { orderId, userInfo, reachedRestro } = route.params;
   const navigation = useNavigation();
@@ -419,7 +419,7 @@ function MapDirection({ route }) { // Destructuring orderId from props
           title={'Rider'}
           description={'Current location of the rider'}
         >
-          <Image source={require('../assets/bike.png')}
+          <Image source={require('../../assets/bike.png')}
             style={[
               styles.markerImage,
               {
@@ -432,14 +432,14 @@ function MapDirection({ route }) { // Destructuring orderId from props
           title={'Restaurant'}
           description={'Location of the restaurant'}
         >
-          <Image source={require('../assets/restaurant.png')} style={styles.markerImage} />
+          <Image source={require('../../assets/restaurant.png')} style={styles.markerImage} />
         </Marker>
         <Marker
           coordinate={{ latitude: mapInfo.User.latitude, longitude: mapInfo.User.longitude }}
           title={'User'}
           description={'Location of the user'}
         >
-          <Image source={require('../assets/person.png')} style={styles.markerImage} />
+          <Image source={require('../../assets/person.png')} style={styles.markerImage} />
         </Marker>
         {routeCoordinates.length > 0 && (
           <Polyline
@@ -617,4 +617,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MapDirection;
+export default FoodMapDirection;
