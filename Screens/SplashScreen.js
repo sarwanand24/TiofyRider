@@ -14,7 +14,7 @@ const SplashScreen = () => {
         const token = await AsyncStorage.getItem('token');
         if (token) {
           // Token exists, navigate to RiderDashboard
-          navigation.replace('RiderDashboard');
+          navigation.replace("MainApp");
         } else {
           // No token, navigate to Auth screen
           navigation.replace('Auth');

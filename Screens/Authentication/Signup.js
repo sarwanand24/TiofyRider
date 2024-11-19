@@ -18,6 +18,7 @@ const Signup = (props) => {
   const [password, setPassword] = useState('');
   const [vehicleName, setVehicleName] = useState('');
   const [vehicleNo, setVehicleNo] = useState('');
+  const [vehicleType, setVehicleType] = useState('');
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [loading, setLoading] = useState(false);
   const [city, setCity] = useState('');
@@ -73,6 +74,7 @@ const Signup = (props) => {
       formData.append('password', password);
       formData.append('vehicleName', vehicleName);
       formData.append('vehicleNo', vehicleNo);
+      formData.append('vehicleType', vehicleType);
       formData.append('drivingLiscenceImg', drivingLicenseImage);
       formData.append('profileImg', profilePhoto);
       formData.append('city', city);
@@ -89,7 +91,7 @@ const Signup = (props) => {
       await AsyncStorage.setItem("token", response.data.data.refreshToken);
       await AsyncStorage.setItem("Riderdata", JSON.stringify(response.data.data.Rider));
       props.navigation.pop(); 
-      props.navigation.replace('RiderDashboard'); 
+      props.navigation.replace("MainApp"); 
     } catch (error) {
       console.error(error);
       // Handle error
@@ -236,6 +238,13 @@ const Signup = (props) => {
             placeholderTextColor="#ccc"
             value={vehicleNo}
             onChangeText={setVehicleNo}
+          />
+           <TextInput
+            style={styles.input}
+            placeholder="VehicleType (Bike or Car)"
+            placeholderTextColor="#ccc"
+            value={vehicleType}
+            onChangeText={setVehicleType}
           />
            {/* <TextInput
             style={styles.input}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, PermissionsAndroid, Platform, Alert, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ToastAndroid, PermissionsAndroid, Platform, Alert, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { DrawerLayoutAndroid } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
@@ -9,6 +9,7 @@ import Loading from './Loading';
 import { getAccessToken } from '../utils/auth';
 import axios from 'axios';
 import socket from '../utils/Socket';
+import { Switch } from 'react-native-paper';
 
 // Main Dashboard Component
 export default function RiderDashboard(props) {
@@ -22,8 +23,62 @@ export default function RiderDashboard(props) {
   const [undeliveredOrders, setUndeliveredOrders] = useState([]);
   const [undeliveredCyrOrders, setUndeliveredCyrOrders] = useState([]);
   const [orderOf, setOrderOf] = useState('');
+  const [online, setOnline] = useState(null);
+  const [toggle, setToggle] = useState(null);
+  const [greeting, setGreeting] = useState('');
+  const [Riderdata, setRiderdata] = useState({});
+  const [earningOf, setEarningOf] = useState('Today');
+  const [earningData, setEarningData] = useState(null);
 // after accepting each order make rider unavailable and make it available after completing that order
-  const drawer = React.useRef(null);
+
+useEffect(() => {
+  const updateGreeting = async() => {
+    let rider = await AsyncStorage.getItem('Riderdata')
+    console.log('Rider..', rider)
+    const riderdata = JSON.parse(rider);
+    setRiderdata(riderdata);
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      setGreeting('Good Morning');
+    } else if (hour < 18) {
+      setGreeting('Good Afternoon');
+    } else if (hour < 21) {
+      setGreeting('Good Evening');
+    } else {
+      setGreeting('Good Night');
+    }
+  };
+
+  updateGreeting();
+
+  // Optionally, update greeting every hour
+  const intervalId = setInterval(updateGreeting, 3600000); // 1 hour
+
+  return () => clearInterval(intervalId); // cleanup on unmount
+}, []);
+
+useEffect(() => {
+  const fetchEarnings = async () => {
+  if(Riderdata._id){
+    try {
+      const response = await axios.get(
+        "https://dc8a-2409-4061-99-a7b1-a417-5d2e-52b9-fab7.ngrok-free.app/api/v1/riders/get-earnings",
+        {
+          params: { riderId: Riderdata?._id },
+        }
+      );
+      setEarningData(response.data);
+      console.log('earnings data.........', response.data)
+    } catch (error) {
+      console.error("Error fetching earnings:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+  };
+
+  fetchEarnings();
+}, [Riderdata?._id]);
 
   useEffect(() => {
     const fetchUndeliveredOrders = async () => {
@@ -59,20 +114,34 @@ export default function RiderDashboard(props) {
     fetchUndeliveredCyrOrders();
   }, []);
 
+  useEffect(() => {
+    const fetchRiderData = async () => {
+        try {
+            // Retrieve the token from AsyncStorage
+            const token = await getAccessToken();
+            
+            if (token) {
+                // Make the API call with the token
+                const response = await axios.get('https://trioserver.onrender.com/api/v1/riders/current-rider', {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
 
-  // Sidebar content
-  const navigationView = () => (
-    <View style={styles.drawerContent}>
-      <TouchableOpacity style={styles.drawerItem} onPress={() => { props.navigation.push('RiderProfile') }}>
-        <Icon name="account" size={30} color="#ff00ff" style={styles.glow} />
-        <Text style={[styles.drawerItemText, styles.glow]}>Profile</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.drawerItem}>
-        <Icon name="history" size={30} color="#00ffff" style={styles.glow} />
-        <Text style={[styles.drawerItemText, styles.glow]}>Order History</Text>
-      </TouchableOpacity>
-    </View>
-  );
+                // Update the state with the fetched data
+                
+                setRiderdata(response.data.data);
+                setOnline(response.data.data?.availableStatus);
+            } else {
+                console.log("No token found.");
+            }
+        } catch (error) {
+            console.log("Error fetching rider data:", error);
+        }
+    };
+
+    fetchRiderData();
+}, []);
 
   const getLocation = () => {
     if (Platform.OS === 'android') {
@@ -165,6 +234,46 @@ export default function RiderDashboard(props) {
       alert('Error storing device token.');
     }
   };
+
+  useEffect(()=>{
+   const toggleStatus = async() => {
+    try {
+    if(online !== null){
+      const token = await getAccessToken();
+      const response = await axios.post(
+        'https://trioserver.onrender.com/api/v1/riders/toggle-availability',
+        { availableStatus: online },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (response.status === 200) {
+        ToastAndroid.showWithGravity(
+          `You are now ${online ? 'Online, and will receive orders soon.' : 'Offline, and will not receive any orders.'}`,
+          ToastAndroid.SHORT,
+          ToastAndroid.CENTER
+        );
+      }
+    }
+    } catch (error) {
+      console.error('Error toggling availableStatus:', error);
+      setOnline(!online)
+      ToastAndroid.showWithGravity(
+        "Failed to update Online Status.",
+        ToastAndroid.SHORT,
+        ToastAndroid.CENTER
+      );
+    }
+   }
+   toggleStatus();
+  }, [toggle])
+
+  const onToggleSwitch = () => {
+    setOnline(!online);
+    setToggle(!toggle);
+};
 
   const fetchOrders = async () => {
     try {
@@ -386,24 +495,21 @@ export default function RiderDashboard(props) {
   }
 
   return (
-    <DrawerLayoutAndroid
-      ref={drawer}
-      drawerWidth={300}
-      drawerPosition="left"
-      renderNavigationView={navigationView}
-      drawerBackgroundColor="#1b1b1b"
-    >
       <ScrollView style={styles.container}>
-        {/* Header with Hamburger menu and Title */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.hamburger} onPress={() => drawer.current.openDrawer()}>
-            <Icon name="menu" size={30} color="#ffffff" style={styles.glow} />
-          </TouchableOpacity>
-          <Text style={[styles.title, styles.glow]}>Rider Dashboard</Text>
+        <View style={styles.header}>  
+              <View style={styles.toggle}>
+                     <Switch value={online} onValueChange={onToggleSwitch} color='green' />
+                     <Text style={{color:'green'}}>{online ? 'Online' : 'Offline'}</Text>
+                </View>
+          <Text>Rider Dashboard</Text>
+        </View>
+          {/*** Greeting *****/}
+        <View>
+      <Text style={styles.greetingText}>{greeting} {Riderdata?.riderName}!</Text>
         </View>
 
         {/* Subheading for Orders */}
-        <Text style={[styles.subheading, styles.glow]}>Your Orders</Text>
+        <Text style={[styles.subheading]}>Your Orders</Text>
 
         {/* Display fetched orders */}
         <View style={styles.ordersContainer}>
@@ -461,25 +567,40 @@ export default function RiderDashboard(props) {
           )}
         </View>
 
-        {/* Main Dashboard Content */}
-        <Text style={[styles.subheading, styles.glow]}>All Services</Text>
-        <View style={styles.dashboardContainer}>
-          <TouchableOpacity style={styles.iconContainer} onPress={()=>{props.navigation.push("Foody")}}>
-            <Icon name="food" size={50} color="#ff00ff" style={styles.glow} />
-            <Text style={[styles.iconText, styles.glow]}>Foody</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconContainer}>
-            <Icon name="car" size={50} color="#00ffff" style={styles.glow} />
-            <Text style={[styles.iconText, styles.glow]}>Cab Booking</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconContainer}>
-            <Icon name="home" size={50} color="#ffff00" style={styles.glow} />
-            <Text style={[styles.iconText, styles.glow]}>Hotel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconContainer}>
-            <Icon name="washing-machine" size={50} color="#ff9900" style={styles.glow} />
-            <Text style={[styles.iconText, styles.glow]}>Laundry</Text>
-          </TouchableOpacity>
+        <View style={styles.progressContainer}>
+          <Text style={{color:'white', fontSize:16, fontWeight:'bold'}}>My Progress</Text>
+          <View style={styles.progressBtn}>
+            <TouchableOpacity 
+            onPress={()=>{setEarningOf('Today')}}
+            style={[styles.progressBtn2, earningOf == 'Today' ? {backgroundColor:'white'} : null]}>
+              <Text style={earningOf == 'Today' ? {color:'black'} : {color:'white'}}>Today</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+             onPress={()=>{setEarningOf('This Week')}}
+             style={[styles.progressBtn2, earningOf == 'This Week' ? {backgroundColor:'white'} : null]}>
+              <Text style={earningOf == 'This Week' ? {color:'black'} : {color:'white'}}>This Week</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.horizontalLine} >
+          <View style={{width: '80%'}} />
+        </View>
+
+          <View style={styles.earningContainer}>
+            <View>
+               <Text style={{color:'white'}}>
+                Rs {earningOf == 'Today'? earningData?.todayEarnings : earningData?.totalEarnings}
+                </Text>
+               <Text style={{color:'white'}}>Earnings</Text>
+            </View>
+            <View>
+               <Text style={{color:'white'}}>
+                {earningOf == 'Today'? earningData?.todayOrders : earningData?.totalOrders}
+                </Text>
+               <Text style={{color:'white'}}>Orders</Text>
+            </View>
+          </View>
         </View>
 
         {undeliveredOrders.map((order) => (
@@ -519,7 +640,6 @@ export default function RiderDashboard(props) {
       ))}
 
       </ScrollView>
-    </DrawerLayoutAndroid>
   );
 }
 
@@ -527,19 +647,19 @@ export default function RiderDashboard(props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: 'white',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center', // Center the title
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ffffff',
+    justifyContent: 'space-between', // Center the title
+    padding: 10,
   },
-  hamburger: {
-    position: 'absolute', // Keep the hamburger icon on the left
-    left: 15,
+  toggle: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginHorizontal: 5
   },
   title: {
     fontSize: 24,
@@ -568,26 +688,26 @@ const styles = StyleSheet.create({
   },
   ordersContainer: {
     padding: 15,
-    backgroundColor: '#1b1b1b',
+    backgroundColor: 'white',
   },
   orderBox: {
     marginBottom: 10,
     padding: 10,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: 'lightgreen',
     borderRadius: 5,
   },
   orderText: {
-    color: '#ffffff',
+    color: 'black',
     fontSize: 16,
   },
   noOrdersText: {
-    color: '#ffffff',
+    color: 'black',
     fontSize: 16,
     textAlign: 'center',
   },
   subheading: {
     fontSize: 20,
-    color: '#ffffff',
+    color: 'black',
     padding: 10,
     textAlign: 'left',
     paddingLeft: 15
@@ -606,11 +726,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     marginTop: 5,
-  },
-  glow: {
-    textShadowColor: '#ff00ff',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
   },
   buttonsContainer: {
     flexDirection: 'row',
@@ -633,5 +748,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  greetingText: {
+    textAlign: 'center',
+    color: '#5ecdf9',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 10
+  },
+  progressContainer: {
+    padding: 15,
+    backgroundColor: '#5ecdf9',
+  },
+  progressBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    padding: 10
+  },
+  progressBtn2: {
+   padding: 8,
+   borderWidth: 2,
+   borderColor: 'lightgreen',
+   borderRadius: 15
+  },
+  earningContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    padding: 10
+  },
+  horizontalLine: {
+    height: 1,
+    marginHorizontal: 30,
+    backgroundColor: '#b9b3b9',
   },
 });

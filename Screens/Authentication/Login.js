@@ -1,17 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Animated, Easing, ActivityIndicator } from 'react-native';
 import axios from 'axios';
-import auth from '@react-native-firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
 import Loading from '../Loading';
 
 const Login = (props) => {
-  const [mobileNo, setMobileNo] = useState('');
+  const [email, setemail] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const[otpMade, setOtpMade] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [riderDetails, setRiderDetails] = useState(null);
-  const [confirm, setConfirm] = useState(null);
   const [loading, setLoading] = useState(false); // Add loading state
   const [error, setError] = useState(''); // Add error state
 
@@ -57,32 +56,21 @@ const Login = (props) => {
     ).start();
   }, []);
 
-  // Handle user authentication state change
-  async function onAuthStateChanged(user) {
-    console.log("User", user);
-    if (user) {
-      console.log('Success Login');
-      // await AsyncStorage.setItem("token", riderDetails.accessToken);
-      // await AsyncStorage.setItem("Riderdata", JSON.stringify(riderDetails.rider));
-      // props.navigation.replace('RiderDashboard'); 
-    }
-  }
-
   // Handle sending OTP
   const handleSendOtp = async () => {
     setLoading(true); // Set loading true when API call starts
     setError(''); // Clear any previous errors
     try {
-      // Step 1: Get Rider Details from your API
-      console.log(mobileNo);   
-      const response = await axios.post('https://trioserver.onrender.com/api/v1/riders/login', { mobileNo });
+        // Step 1: Get Restro Details from your API
+        console.log(email)
+        const generatedOtp = Math.floor(100000 + Math.random() * 900000);
+        setOtpMade(generatedOtp); 
+      const response = await axios.post('https://trioserver.onrender.com/api/v1/riders/login', { email, otp: generatedOtp });
       console.log('response', response.data);
       setRiderDetails(response.data.data);
-
       // Step 2: Send OTP using Firebase
-      const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
-      signInWithPhoneNumber(`+91 ${mobileNo}`);
-      setIsOtpSent(true);
+      console.log("OTP:", generatedOtp)
+      setIsOtpSent(true)
     } catch (error) {
       console.error(error);
       setError('Failed to send OTP. Please try again.'); 
@@ -91,24 +79,18 @@ const Login = (props) => {
     }
   };
 
-  // Send OTP via Firebase
-  async function signInWithPhoneNumber(phoneNumber) {
-    const confirmation = await auth().signInWithPhoneNumber(phoneNumber);
-    setConfirm(confirmation);
-  }
-
   // Verify OTP
   async function handleVerifyOtp() {
     setLoading(true); // Set loading true when verifying OTP
     setError(''); // Clear any previous errors
     try {
       const enteredOtp = otp.join('');
-      await confirm.confirm(enteredOtp);
-      console.log('Success Login4');
-      await AsyncStorage.setItem("token", riderDetails.refreshToken);
-      await AsyncStorage.setItem("Riderdata", JSON.stringify(riderDetails.rider));
-      props.navigation.pop(); 
-      props.navigation.replace('RiderDashboard'); 
+    if (enteredOtp == otpMade) {
+       await AsyncStorage.setItem("token", riderDetails.refreshToken);
+       await AsyncStorage.setItem("Riderdata", JSON.stringify(riderDetails.rider));
+       props.navigation.pop(); 
+       props.navigation.replace("MainApp");
+ } 
     } catch (error) {
       console.log('Invalid code.');
       setError('Invalid OTP. Please try again.'); 
@@ -149,8 +131,8 @@ const Login = (props) => {
                   style={styles.input}
                   placeholder="Mobile Number"
                   placeholderTextColor="#ccc"
-                  value={mobileNo}
-                  onChangeText={setMobileNo}
+                  value={email}
+                  onChangeText={setemail}
                   keyboardType="phone-pad"
                   maxLength={10}
                 />
