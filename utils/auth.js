@@ -21,6 +21,7 @@ export const refreshToken = async () => {
     const response = await axios.post('https://trioserver.onrender.com/api/v1/riders/refresh-token', {
        rider: Riderdata._id,
     });
+    console.log('token refreshing --------', response.data.data)
     await AsyncStorage.setItem('token', response.data.data.refreshToken);
     return response.data.data.refreshToken;
   } catch (error) {

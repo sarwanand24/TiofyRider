@@ -1,13 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, Text, Image, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Image, StyleSheet, ScrollView, Button, TextInput, TouchableOpacity, Dimensions, StatusBar } from 'react-native';
 import axios from 'axios';
 import Loading from './Loading';
 import { getAccessToken } from '../utils/auth';
 
+const {width, height} = Dimensions.get('window');
+
 const RiderProfile = () => {
 
     const [riderData, setRiderData] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+  const [email, setEmail] = useState('');
+  const [mobileNo, setMobileNo] = useState('');
+  const [address, setAddress] = useState('');
+  const [vehicleName, setVehicleName] = useState('');
+  const [vehicleType, setVehicleType] = useState('');
+  const [vehicleNumber, setVehicleNumber] = useState('');
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
 
     useEffect(() => {
       const fetchRiderData = async () => {
@@ -42,12 +53,31 @@ const RiderProfile = () => {
     const cyrRideHistoryCount = riderData ? riderData.cyrRideHistory.length : 0;
     const totalOrders = foodyRideHistoryCount + cyrRideHistoryCount;
   
-    if (!riderData) {
-      return <Loading />; // Or you can show a loading spinner or placeholder
-    }
+    const handleSave = async () => {
+      try {
+        setLoading(true);
+        const token = await getAccessToken();
+        if (token) {
+          const response = await axios.put(
+            'https://trioserver.onrender.com/api/v1/riders/update-details',
+            { email, mobileNo, address, vehicleName, vehicleNumber, vehicleType },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setRiderData(response.data.data);
+          setIsEditing(false);
+        }
+      } catch (error) {
+        console.log('Error updating rider data:', error);
+      }finally{setLoading(false)}
+    };
+  
+    if (!riderData) return <Loading />;
+
+    if (loading) return <Loading />
 
   return (
     <ScrollView style={styles.container}>
+             <StatusBar hidden={true} />
       <View style={styles.header}>
       <Image
   source={{
@@ -65,15 +95,39 @@ const RiderProfile = () => {
         <Text style={[styles.subheading, styles.glow]}>Personal Information</Text>
         <View style={styles.infoBox}>
           <Text style={styles.label}>Email:</Text>
-          <Text style={styles.value}>{riderData.email}</Text>
+          {isEditing ? (
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+            />
+          ) : (
+            <Text style={styles.value}>{riderData.email}</Text>
+          )}
         </View>
         <View style={styles.infoBox}>
           <Text style={styles.label}>Address:</Text>
-          <Text style={styles.value}>{riderData.address}</Text>
+          {isEditing ? (
+            <TextInput
+              style={styles.input}
+              value={address}
+              onChangeText={setAddress}
+            />
+          ) : (
+            <Text style={styles.value}>{riderData.address}</Text>
+          )}
         </View>
         <View style={styles.infoBox}>
           <Text style={styles.label}>Mobile Number:</Text>
-          <Text style={styles.value}>{riderData.mobileNo}</Text>
+          {isEditing ? (
+            <TextInput
+              style={styles.input}
+              value={mobileNo}
+              onChangeText={setMobileNo}
+            />
+          ) : (
+            <Text style={styles.value}>{riderData.mobileNo}</Text>
+          )}
         </View>
         {riderData.alternateMobileNo && (
           <View style={styles.infoBox}>
@@ -87,12 +141,90 @@ const RiderProfile = () => {
         <Text style={[styles.subheading, styles.glow]}>Vehicle Information</Text>
         <View style={styles.infoBox}>
           <Text style={styles.label}>Vehicle Name:</Text>
-          <Text style={styles.value}>{riderData.vehicleName}</Text>
+          {isEditing ? (
+            <TextInput
+              style={styles.input}
+              value={vehicleName}
+              onChangeText={setVehicleName}
+            />
+          ) : (
+            <Text style={styles.value}>{riderData.vehicleName}</Text>
+          )}
         </View>
         <View style={styles.infoBox}>
           <Text style={styles.label}>Vehicle Number:</Text>
-          <Text style={styles.value}>{riderData.vehicleNo}</Text>
+          {isEditing ? (
+            <TextInput
+              style={styles.input}
+              value={vehicleNumber}
+              onChangeText={setVehicleNumber}
+            />
+          ) : (
+            <Text style={styles.value}>{riderData.vehicleNo}</Text>
+          )}
         </View>
+        <View style={styles.infoBox}>
+          <Text style={styles.label}>Vehicle Type:</Text>
+          {isEditing ? (
+              <TouchableOpacity
+              style={styles.dropdown}
+              onPress={() => setDropdownVisible(true)}
+            >
+              <Text style={styles.dropdownText}>
+                {vehicleType || 'Select Vehicle Type'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.value}>{riderData.vehicleType}</Text>
+          )}
+          
+          {dropdownVisible && (
+              <View style={styles.dropdownListContainer}>
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setVehicleType('Bike');
+                    setDropdownVisible(false);
+                  }}
+                >
+                  <Text style={styles.dropdownItemText}>Bike</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setVehicleType('Car');
+                    setDropdownVisible(false);
+                  }}
+                >
+                  <Text style={styles.dropdownItemText}>Car</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setVehicleType('Toto');
+                    setDropdownVisible(false);
+                  }}
+                >
+                  <Text style={styles.dropdownItemText}>Toto</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+        </View>
+    
+        {isEditing && (
+            <TouchableOpacity
+            style={{backgroundColor:'#9f0d91', marginVertical:10, width:'60%', borderRadius:20, padding:8, marginHorizontal:'auto'}}
+             onPress={handleSave}
+           >
+             <Text style={{textAlign:'center', color:'white'}}>Save</Text>
+           </TouchableOpacity>
+        )}
+        <TouchableOpacity
+        style={{backgroundColor:'#9f0d91', marginVertical:10, width:'60%', borderRadius:20, padding:8, marginHorizontal:'auto'}}
+          onPress={() => setIsEditing(!isEditing)}
+        >
+          <Text style={{textAlign:'center', color:'white'}}>{isEditing ? 'Cancel' : 'Edit'}</Text>
+        </TouchableOpacity>
         <View style={styles.infoBox}>
           <Text style={styles.label}>Driving License:</Text>
           <Image
@@ -145,7 +277,7 @@ const RiderProfile = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#68095F',
     padding: 20,
   },
   header: {
@@ -211,6 +343,45 @@ const styles = StyleSheet.create({
     color: '#e0e0e0',
     fontSize: 14,
     marginTop: 5,
+  },
+  input:{
+    backgroundColor:'#9f0d91',
+    color:'white',
+    width: '80%',
+    borderRadius: 20
+  },
+  dropdown: {
+    height: 50,
+    borderColor: '#f50057', // Neon magenta
+    borderWidth: 2,
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    justifyContent: 'center',
+    backgroundColor: '#1a1a2e', // Dark retro background
+    marginBottom: 15,
+  },
+  dropdownText: {
+    color: '#ffffff', // White text
+    fontFamily: 'monospace', // Retro font style
+  },
+  dropdownListContainer: {
+    borderWidth: 2,
+    borderColor: '#f50057', // Neon magenta
+    borderRadius: 10,
+    backgroundColor: '#2e2e3a', // Dark background for dropdown items
+    position: 'absolute',
+    zIndex: 1000,
+    width: '100%',
+    paddingVertical: 5,
+  },
+  dropdownItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f50057', // Neon magenta border
+  },
+  dropdownItemText: {
+    color: '#ffffff', // White text
+    fontFamily: 'monospace', // Retro font style
   },
 });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, PermissionsAndroid, Platform, Dimensions, StyleSheet, Button, TextInput, Modal, Image, Animated, PanResponder, Alert } from 'react-native';
+import { View, Text, PermissionsAndroid, Platform, Dimensions, StyleSheet, Button, TextInput, Modal, Image, Animated, PanResponder, Alert, TouchableOpacity, Linking, StatusBar } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import polyline from '@mapbox/polyline';
@@ -38,6 +38,7 @@ function FoodMapDirection({ route }) { // Destructuring orderId from props
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [enteredOtp, setEnteredOtp] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [OrderInfo, setOrderInfo] = useState(null);
 
   React.useEffect(() => {
     if (popup) {
@@ -125,35 +126,6 @@ function FoodMapDirection({ route }) { // Destructuring orderId from props
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const updateRiderLocation = async (latitude, longitude) => {
-      const token = await AsyncStorage.getItem('token');
-      try {
-        const response = await fetch('https://trioserver.onrender.com/api/v1/riders/update-rider-location', {
-          method: 'POST',
-          headers: new Headers({
-            Authorization: 'Bearer ' + token,
-            'Content-Type': 'application/json'
-          }),
-          body: JSON.stringify({ latitude, longitude }),
-        });
-        if (!response.ok) {
-          throw new Error('Error updating location');
-        }
-        console.log('Location updated successfully');
-      } catch (error) {
-        console.error('Failed to update location:', error);
-      }
-    };
-
-    const riderLatitude = mapInfo.Rider.latitude;
-    const riderLongitude = mapInfo.Rider.longitude;
-
-    if (riderLatitude !== 0 && riderLongitude !== 0) {
-      updateRiderLocation(riderLatitude, riderLongitude);
-    }
-  }, [mapInfo.Rider]);
-
   const fetchMapDetails = async () => {
     try {
       setLoading(true)
@@ -174,6 +146,8 @@ function FoodMapDirection({ route }) { // Destructuring orderId from props
       const userLatLng = orderData.User[0] || { latitude: 0, longitude: 0 };
       const restaurantLatLng = orderData.Restaurant[0] || { latitude: 0, longitude: 0 };
       const riderLatLng = orderData.Rider[0] || mapInfo.Rider;
+
+      setOrderInfo(orderData);
 
       setEarning(data.data?.riderEarning)
 
@@ -242,6 +216,45 @@ function FoodMapDirection({ route }) { // Destructuring orderId from props
 
   console.log('mapinfos', mapInfo.User, mapInfo.Restaurant, mapInfo.Rider);
   
+  useEffect(() => {
+    const updateRiderLocation = async (latitude, longitude) => {
+      const token = await AsyncStorage.getItem('token');
+      try {
+        const response = await fetch('https://trioserver.onrender.com/api/v1/riders/update-rider-location', {
+          method: 'POST',
+          headers: new Headers({
+            Authorization: 'Bearer ' + token,
+            'Content-Type': 'application/json'
+          }),
+          body: JSON.stringify({ latitude, longitude }),
+        });
+        if (!response.ok) {
+          throw new Error('Error updating location');
+        }
+        console.log('Location updated successfully');
+        if (!isAtRestaurant) {
+          fetchRoute({
+            start: { latitude: mapInfo.Rider.latitude, longitude: mapInfo.Rider.longitude },
+            end: { latitude: mapInfo.Restaurant.latitude, longitude: mapInfo.Restaurant.longitude }
+          });
+        } else {
+          fetchRoute({
+            start: { latitude: mapInfo.Rider.latitude, longitude: mapInfo.Rider.longitude },
+            end: { latitude: mapInfo.User.latitude, longitude: mapInfo.User.longitude }
+          });
+        }
+      } catch (error) {
+        console.error('Failed to update location:', error);
+      }
+    };
+
+    const riderLatitude = mapInfo.Rider.latitude;
+    const riderLongitude = mapInfo.Rider.longitude;
+
+    if (riderLatitude !== 0 && riderLongitude !== 0) {
+      updateRiderLocation(riderLatitude, riderLongitude);
+    }
+  }, [mapInfo.Rider]);
 
   const handleArrivalAtRestaurant = async () => {
     if (!hasArrivedAtRestaurant) {
@@ -341,7 +354,7 @@ function FoodMapDirection({ route }) { // Destructuring orderId from props
           // Show the popup message with the earning
           showPopup(earning);
           setTimeout(() => {
-            navigation.replace('RiderDashboard'); // Replace 'DifferentScreen' with your target screen name
+            navigation.replace('MainApp'); // Replace 'DifferentScreen' with your target screen name
           }, 4000);
         } catch (error) {
           console.error('Failed to update order status:', error);
@@ -351,29 +364,6 @@ function FoodMapDirection({ route }) { // Destructuring orderId from props
       setErrorMessage('Invalid OTP. Please try again.');
     }
   };
-
-  const panResponderArrival = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderMove: Animated.event(
-      [null, { dx: slideValue }],
-      { useNativeDriver: false }
-    ),
-    onPanResponderRelease: (e, { dx }) => {
-      if (dx > width * 0.4) {
-        handleArrivalAtRestaurant();
-        Animated.spring(slideValue, {
-          toValue: 0,
-          useNativeDriver: false,
-        }).start();
-      } else {
-        Animated.spring(slideValue, {
-          toValue: 0,
-          useNativeDriver: false,
-        }).start();
-      }
-    },
-  });
 
   const panResponderDelivery = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
@@ -402,9 +392,28 @@ function FoodMapDirection({ route }) { // Destructuring orderId from props
     return <Loading />
   }
 
+    const handleCall = () => {
+      const mobileNo = OrderInfo?.User[0]?.mobileNo;
+      if (mobileNo) {
+        Linking.openURL(`tel:${mobileNo}`);
+      }
+    }
+
+    const openMap = () => {
+      let url = '';
+      if(isAtRestaurant){
+        url = `https://www.google.com/maps/dir/?api=1&origin=${mapInfo.Rider.latitude},${mapInfo.Rider.longitude}&destination=${mapInfo.User.latitude},${mapInfo.User.longitude}&travelmode=driving`;
+      }
+      else{
+        url = `https://www.google.com/maps/dir/?api=1&origin=${mapInfo.Rider.latitude},${mapInfo.Rider.longitude}&destination=${mapInfo.Restaurant.latitude},${mapInfo.Restaurant.longitude}&travelmode=driving`;
+      }
+  
+      Linking.openURL(url).catch(err => console.error("An error occurred", err));
+    };
 
   return (
     <View style={styles.container}>
+             <StatusBar hidden={true} />
       <MapView
         style={styles.map}
         initialRegion={{
@@ -444,8 +453,8 @@ function FoodMapDirection({ route }) { // Destructuring orderId from props
         {routeCoordinates.length > 0 && (
           <Polyline
             coordinates={routeCoordinates}
-            strokeColor="blue"
-            strokeWidth={5}
+            strokeColor="#68095f"
+            strokeWidth={3}
           />
         )}
       </MapView>
@@ -454,23 +463,34 @@ function FoodMapDirection({ route }) { // Destructuring orderId from props
         <View style={styles.routeInfo}>
           <Text style={styles.infoText}>Distance: {(routeDistance / 1000).toFixed(2)} km</Text>
           <Text style={styles.infoText}>Duration: {(routeDuration / 60).toFixed(0)} mins</Text>
+         <Text style={styles.infoText}>
+              {OrderInfo?.User[0]?.fullName}:{' '}
+              <TouchableOpacity onPress={handleCall}>
+                <Text style={styles.callText}>+91 {OrderInfo?.User[0]?.mobileNo}</Text>
+              </TouchableOpacity>
+            </Text>
+            <TouchableOpacity style={{margin: 'auto'}} onPress={openMap}>
+              <Text style={{color:'white'}}>View on map</Text>
+            </TouchableOpacity>
         </View>
       )}
+
       <View style={styles.sliderContainer}>
-        <Animated.View
-          {...(isAtRestaurant ? panResponderDelivery.panHandlers : panResponderArrival.panHandlers)}
-          style={[
-            styles.slider,
-            {
-              transform: [{ translateX: slideValue }],
-              backgroundColor: isAtRestaurant ? '#f80c4c' : '#f1c40f',
-            },
-          ]}
-        >
-          <Text style={styles.sliderText}>
-            {isAtRestaurant ? 'Delivered Order?' : 'Arrived at Restaurant?'}
-          </Text>
-        </Animated.View>
+      {isAtRestaurant ? (
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: 'red' }]} // Yellow
+            onPress={handleOrderDelivered}
+          >
+            <Text style={styles.buttonText}>Delivered Order?</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: 'green', borderWidth: 1, borderColor: '#ccc' }]} // White with border
+            onPress={handleArrivalAtRestaurant}
+          >
+            <Text style={[styles.buttonText, { color: 'white' }]}>Arrived at Restaurant?</Text>
+          </TouchableOpacity>
+        )}
       </View>
       <Modal
         transparent={true}
@@ -510,7 +530,9 @@ function FoodMapDirection({ route }) { // Destructuring orderId from props
               placeholder="Enter 4-digit OTP"
             />
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-            <Button title="Submit OTP" onPress={verifyOtpAndDeliverOrder} />
+            <TouchableOpacity style={styles.button} onPress={verifyOtpAndDeliverOrder}>
+              <Text style={{color:'white'}}>Submit Otp</Text>
+              </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -523,6 +545,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
     alignItems: 'center',
+    flex:1
   },
   map: {
     ...StyleSheet.absoluteFillObject,
@@ -533,27 +556,29 @@ const styles = StyleSheet.create({
   },
   routeInfo: {
     position: 'absolute',
-    top: 10,
-    backgroundColor: '#00000090',
+    top: 0,
+    backgroundColor: '#68095F',
     padding: 10,
-    borderRadius: 8,
     zIndex: 1,
+    width: '100%'
   },
   infoText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontFamily: 'CartoonBold',
   },
+  callText: {
+    fontSize: 16,
+    color: '#ffff00', // Make it look clickable
+    textDecorationLine: 'underline', // Add underline for better UX
+  },
   sliderContainer: {
     position: 'absolute',
-    bottom: 50,
-    left: 20,
-    right: 20,
+    bottom: 0,
     height: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 30,
-    backgroundColor: '#1E90FF',
+    width: '100%',
     paddingHorizontal: 10,
   },
   slider: {
@@ -562,13 +587,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 25,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'black'
   },
   sliderText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1E90FF',
+    color: 'black',
     fontFamily: 'CartoonBold',
+    textAlign: 'center'
   },
   modalContainer: {
     flex: 1,
@@ -579,7 +607,7 @@ const styles = StyleSheet.create({
   modalContent: {
     width: 300,
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: '#68095F',
     borderRadius: 10,
     alignItems: 'center',
     elevation: 5,
@@ -587,24 +615,24 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#f80c4c',
+    color: '#ffff00',
     marginBottom: 10,
   },
   modalText: {
     fontSize: 18,
-    color: '#333',
+    color: 'white',
     marginBottom: 10,
   },
   modalEarning: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#1E90FF',
+    color: 'white',
     marginBottom: 20,
   },
   button: {
     marginTop: 10,
     padding: 10,
-    backgroundColor: '#1E90FF',
+    backgroundColor: '#9f0d91',
     borderRadius: 5,
   },
   buttonText: {
@@ -612,9 +640,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   errorText: {
-    color: 'red',
+    color: '#ffff00',
     marginBottom: 10,
   },
+  input:{
+    color:'white',
+    textAlign: 'center'
+  }
 });
 
 export default FoodMapDirection;

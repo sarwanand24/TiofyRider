@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Image, Dimensions } from 'react-native';
+import { View, StyleSheet, Image, Dimensions, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -31,6 +31,7 @@ const SplashScreen = () => {
 
   return (
     <View style={styles.container}>
+             <StatusBar hidden={true} />
       <Image source={require('../assets/TiofyLogo.png')} style={styles.logo} />
     </View>
   );

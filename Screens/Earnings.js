@@ -7,10 +7,12 @@ import {
   ActivityIndicator,
   ScrollView,
   TouchableOpacity,
+  StatusBar,
 } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import moment from "moment";
+import Loading from "./Loading";
 
 const Earnings = () => {
   const [data, setData] = useState(null);
@@ -57,7 +59,7 @@ const Earnings = () => {
         try {
           setLoading(true);
           const response = await axios.get(
-            "https://dc8a-2409-4061-99-a7b1-a417-5d2e-52b9-fab7.ngrok-free.app/api/v1/riders/earning-history",
+            "https://trioserver.onrender.com/api/v1/riders/earning-history",
             {
               params: { riderId: riderData._id },
             }
@@ -84,9 +86,7 @@ const Earnings = () => {
 
   if (loading) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
+      <Loading />
     );
   }
 
@@ -118,8 +118,8 @@ const Earnings = () => {
 
   return (
     <ScrollView style={styles.container}>
+             <StatusBar hidden={true} />
       <Text style={styles.title}>Earning History</Text>
-      <Text style={styles.subtitle}>Rider: {data.riderName}</Text>
       <Text style={styles.totalEarnings}>
         Total Earnings: ₹{data.totalEarnings.toFixed(2)}
       </Text>
@@ -169,13 +169,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: '#68095F'
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 8,
+    color: '#ffff00'
   },
   subtitle: {
     fontSize: 18,
@@ -189,7 +190,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 16,
-    color: "#2e7d32",
+    color: "white",
   },
   tabContainer: {
     flexDirection: "row",
@@ -204,7 +205,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#e0e0e0",
   },
   activeTab: {
-    backgroundColor: "#4caf50",
+    backgroundColor: "#9f0d91",
   },
   tabText: {
     textAlign: "center",
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   item: {
-    backgroundColor: "#fff",
+    backgroundColor: "#9f0d91",
     padding: 16,
     marginVertical: 8,
     borderRadius: 8,
@@ -228,10 +229,12 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 16,
     fontWeight: "bold",
+    color:'#ffff00'
   },
   details: {
     fontSize: 14,
     marginTop: 4,
+    color: 'white'
   },
   loading: {
     flex: 1,

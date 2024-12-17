@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated, StatusBar } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
 // Get screen dimensions for responsive styling
@@ -38,9 +38,10 @@ const AuthScreen = ({ navigation }) => {
 
   return (
     <LinearGradient
-      colors={['#0f0c29', '#302b63', '#24243e']}
+      colors={['#68095f', '#9f0d91', '#68095f']}
       style={styles.gradientBackground}
     >
+             <StatusBar hidden={true} />
       <Animated.View style={{ ...styles.container, opacity: fadeAnim }}>
         <Animated.Text style={[styles.title, { transform: [{ scale: scaleAnim }] }]}>
           Welcome to Tiofy Rider
@@ -54,7 +55,7 @@ const AuthScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('Login')}
           >
             <LinearGradient
-              colors={['#00c6ff', '#0072ff']}
+              colors={['#ffff00', '#ffe100']}
               style={styles.gradientButton}
             >
               <Text style={styles.buttonText}>Login</Text>
@@ -68,7 +69,7 @@ const AuthScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('Signup')}
           >
             <LinearGradient
-              colors={['#f857a6', '#ff5858']}
+              colors={['#ffff00', '#ffe100']}
               style={styles.gradientButton}
             >
               <Text style={styles.buttonText}>Sign Up</Text>
@@ -128,12 +129,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: 'black',
     fontSize: 18,
     fontWeight: 'bold',
   },
   separator: {
-    color: '#FFFFFF',
+    color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
   },

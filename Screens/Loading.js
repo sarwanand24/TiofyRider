@@ -3,7 +3,8 @@ import {
     StyleSheet,
     View,
     ActivityIndicator,
-    Text
+    Text,
+    StatusBar
 } from 'react-native';
 import LottieView from 'lottie-react-native';
 
@@ -11,6 +12,7 @@ const Loading = () => {
 
     return (
         <View style={styles.loading}>
+                   <StatusBar hidden={true} />
            <LottieView source={require('../assets/Animations/loading.json')}
            style={styles.lottie} autoPlay loop />
         </View>
@@ -22,7 +24,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(245, 95, 45, 0.5)'
+        backgroundColor: '#68095f'
     },
     lottie: {
         width: '100%',

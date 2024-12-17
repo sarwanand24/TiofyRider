@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, PermissionsAndroid, Platform, Dimensions, StyleSheet, Button, TextInput, Modal, Image, Animated, PanResponder, Alert } from 'react-native';
+import { View, Text, PermissionsAndroid, Platform, Dimensions, StyleSheet, Button, TextInput, Modal, Image, Animated, PanResponder, Alert, TouchableOpacity, Linking, StatusBar } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import polyline from '@mapbox/polyline';
@@ -37,6 +37,7 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
   const [enteredOtp, setEnteredOtp] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [hasDeliveredOrder, setHasDeliveredOrder] = useState(false)
+  const [OrderInfo, setOrderInfo] = useState(null);
 
   React.useEffect(() => {
     if (popup) {
@@ -124,34 +125,6 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const updateRiderLocation = async (latitude, longitude) => {
-      const token = await AsyncStorage.getItem('token');
-      try {
-        const response = await fetch('https://trioserver.onrender.com/api/v1/riders/update-rider-location', {
-          method: 'POST',
-          headers: new Headers({
-            Authorization: 'Bearer ' + token,
-            'Content-Type': 'application/json'
-          }),
-          body: JSON.stringify({ latitude, longitude }),
-        });
-        if (!response.ok) {
-          throw new Error('Error updating location');
-        }
-        console.log('Location updated successfully');
-      } catch (error) {
-        console.error('Failed to update location:', error);
-      }
-    };
-
-    const riderLatitude = mapInfo.Rider.latitude;
-    const riderLongitude = mapInfo.Rider.longitude;
-
-    if (riderLatitude !== 0 && riderLongitude !== 0) {
-      updateRiderLocation(riderLatitude, riderLongitude);
-    }
-  }, [mapInfo.Rider]);
 
   const fetchMapDetails = async () => {
     try {
@@ -174,6 +147,8 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
       const destination = orderData.toLocation || { lat: 0, long: 0 };
       const riderLatLng = orderData.Rider[0] || { latitude: 0, longitude: 0 };
 
+      setOrderInfo(orderData)
+      console.log('check rani boor phata boor jo nikhil phada', 'rani ka boor ka baal', orderData)
       setEarning(data.data?.riderEarning)
 
       setMapInfo({
@@ -212,6 +187,9 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
     }
   };
 
+  console.log('mapinfos', mapInfo.User, mapInfo.destination, mapInfo.Rider);
+
+
   const fetchRoute = async ({ start, end }) => {
     try {
       console.log('startend........', start, end);
@@ -239,14 +217,51 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
     }
   };
 
-  console.log('mapinfos', mapInfo.User, mapInfo.destination, mapInfo.Rider);
-  
+  useEffect(() => {
+    const updateRiderLocation = async (latitude, longitude) => {
+      const token = await AsyncStorage.getItem('token');
+      try {
+        const response = await fetch('https://trioserver.onrender.com/api/v1/riders/update-rider-location', {
+          method: 'POST',
+          headers: new Headers({
+            Authorization: 'Bearer ' + token,
+            'Content-Type': 'application/json'
+          }),
+          body: JSON.stringify({ latitude, longitude }),
+        });
+        if (!response.ok) {
+          throw new Error('Error updating location');
+        }
+        console.log('Location updated successfully');
+        if (!liftedPassenger) {
+          fetchRoute({
+            start: { latitude: mapInfo.Rider.latitude, longitude: mapInfo.Rider.longitude },
+            end: { latitude: mapInfo.User.lat, longitude: mapInfo.User.long }
+          });
+        } else {
+          fetchRoute({
+            start: { latitude: mapInfo.Rider.latitude, longitude: mapInfo.Rider.longitude },
+            end: { latitude: mapInfo.destination.lat, longitude: mapInfo.destination.long }
+          });
+        }
+      } catch (error) {
+        console.error('Failed to update location:', error);
+      }
+    };
+
+    const riderLatitude = mapInfo.Rider.latitude;
+    const riderLongitude = mapInfo.Rider.longitude;
+
+    if (riderLatitude !== 0 && riderLongitude !== 0) {
+      updateRiderLocation(riderLatitude, riderLongitude);
+    }
+  }, [mapInfo.Rider]);
 
   const handleLiftedPassenger = async () => {
     if (!liftedPassenger) {
       setLiftedPassenger(true);
       try {
-       const check = await fetchRoute({
+        const check = await fetchRoute({
           start: { latitude: mapInfo.Rider.latitude, longitude: mapInfo.Rider.longitude },
           end: { latitude: mapInfo.destination.lat, longitude: mapInfo.destination.long }
         });
@@ -278,7 +293,7 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
   };
 
   const handleOrderDelivered = async () => {
-    setIsModalVisible(true); 
+    setIsModalVisible(true);
   };
 
   const verifyOtpAndDeliverOrder = async () => {
@@ -303,7 +318,7 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
           if (!response.ok) {
             throw new Error(`Error updating order status: ${response.statusText}`);
           }
-  
+
           console.log('Order status updated successfully:', response);
           // Show the popup message with the earning
           showPopup(earning);
@@ -319,59 +334,32 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
     }
   };
 
-  const panResponderArrival = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderMove: Animated.event(
-      [null, { dx: slideValue }],
-      { useNativeDriver: false }
-    ),
-    onPanResponderRelease: (e, { dx }) => {
-      if (dx > width * 0.4) {
-        handleLiftedPassenger();
-        Animated.spring(slideValue, {
-          toValue: 0,
-          useNativeDriver: false,
-        }).start();
-      } else {
-        Animated.spring(slideValue, {
-          toValue: 0,
-          useNativeDriver: false,
-        }).start();
-      }
-    },
-  });
-
-  const panResponderDelivery = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderMove: Animated.event(
-      [null, { dx: slideValue }],
-      { useNativeDriver: false }
-    ),
-    onPanResponderRelease: (e, { dx }) => {
-      if (dx > width * 0.4) {
-        handleOrderDelivered();
-        Animated.spring(slideValue, {
-          toValue: 0,
-          useNativeDriver: false,
-        }).start();
-      } else {
-        Animated.spring(slideValue, {
-          toValue: 0,
-          useNativeDriver: false,
-        }).start();
-      }
-    },
-  });
-
   if (loading) {
     return <Loading />
   }
 
+  const handleCall = () => {
+    const mobileNo = OrderInfo?.User[0]?.mobileNo;
+    if (mobileNo) {
+      Linking.openURL(`tel:${mobileNo}`);
+    }
+  }
+
+   const openMap = () => {
+        let url = '';
+        if(liftedPassenger){
+          url = `https://www.google.com/maps/dir/?api=1&origin=${mapInfo.Rider.latitude},${mapInfo.Rider.longitude}&destination=${mapInfo.destination.lat},${mapInfo.destination.long}&travelmode=driving`;
+        }
+        else{
+          url = `https://www.google.com/maps/dir/?api=1&origin=${mapInfo.Rider.latitude},${mapInfo.Rider.longitude}&destination=${mapInfo.User.lat},${mapInfo.User.long}&travelmode=driving`;
+        }
+    
+        Linking.openURL(url).catch(err => console.error("An error occurred", err));
+      };
 
   return (
     <View style={styles.container}>
+             <StatusBar hidden={true} />
       <MapView
         style={styles.map}
         initialRegion={{
@@ -394,50 +382,67 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
               }
             ]} />
         </Marker>
-        <Marker
-          coordinate={{ latitude: mapInfo.User.lat, longitude: mapInfo.User.long }}
-          title={'PickupLocation'}
-          description={'Location of the user'}
-        >
-          <Image source={require('../../assets/person.png')} style={styles.markerImage} />
-        </Marker>
+
+        {!liftedPassenger && (
+          <Marker
+            coordinate={{ latitude: mapInfo.User.lat, longitude: mapInfo.User.long }}
+            title={'PickupLocation'}
+            description={'Location of the user'}
+          >
+            <Image source={require('../../assets/person.png')} style={styles.markerImage} />
+          </Marker>
+        )}
+
         <Marker
           coordinate={{ latitude: mapInfo.destination.lat, longitude: mapInfo.destination.long }}
           title={'User'}
           description={'Location of the destination'}
         >
-          <Image source={require('../../assets/person.png')} style={styles.markerImage} />
+          <Image source={require('../../assets/location.webp')} style={styles.markerImage} />
         </Marker>
         {routeCoordinates.length > 0 && (
           <Polyline
             coordinates={routeCoordinates}
-            strokeColor="blue"
-            strokeWidth={5}
+            strokeColor="#68095f"
+            strokeWidth={3}
           />
         )}
       </MapView>
-      
+
       {routeDistance && routeDuration && (
         <View style={styles.routeInfo}>
           <Text style={styles.infoText}>Distance: {(routeDistance / 1000).toFixed(2)} km</Text>
           <Text style={styles.infoText}>Duration: {(routeDuration / 60).toFixed(0)} mins</Text>
+          <Text style={styles.infoText}>
+            {OrderInfo?.User[0]?.fullName}:{' '}
+            <TouchableOpacity onPress={handleCall}>
+              <Text style={styles.callText}>+91 {OrderInfo?.User[0]?.mobileNo}</Text>
+            </TouchableOpacity>
+          </Text>
+          <Text style={styles.infoText}>From: {OrderInfo?.fromLocation.placeName}</Text>
+          <Text style={styles.infoText}>To: {OrderInfo?.toLocation.placeName}</Text>
+          <TouchableOpacity style={{ margin: 'auto' }} onPress={openMap}>
+            <Text style={{ color: 'white' }}>View on map</Text>
+          </TouchableOpacity>
         </View>
       )}
+
       <View style={styles.sliderContainer}>
-        <Animated.View
-          {...(liftedPassenger ? panResponderDelivery.panHandlers : panResponderArrival.panHandlers)}
-          style={[
-            styles.slider,
-            {
-              transform: [{ translateX: slideValue }],
-              backgroundColor: liftedPassenger ? '#f80c4c' : '#f1c40f',
-            },
-          ]}
-        >
-          <Text style={styles.sliderText}>
-            {liftedPassenger ? 'Arrived at Destination?' : 'Lifted Passenger?'}
-          </Text>
-        </Animated.View>
+      {liftedPassenger ? (
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: '#f80c4c' }]}
+            onPress={handleOrderDelivered}
+          >
+            <Text style={styles.buttonText}>Arrived at Destination?</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: '#f1c40f' }]}
+            onPress={handleLiftedPassenger}
+          >
+            <Text style={styles.buttonText}>Lifted Passenger?</Text>
+          </TouchableOpacity>
+        )}
       </View>
       <Modal
         transparent={true}
@@ -477,7 +482,9 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
               placeholder="Enter 4-digit OTP"
             />
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-            <Button title="Submit OTP" onPress={verifyOtpAndDeliverOrder} />
+            <TouchableOpacity style={styles.button} onPress={verifyOtpAndDeliverOrder}>
+              <Text style={{ color: 'white' }}>Submit Otp</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -490,6 +497,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
     alignItems: 'center',
+    flex: 1
   },
   map: {
     ...StyleSheet.absoluteFillObject,
@@ -500,27 +508,29 @@ const styles = StyleSheet.create({
   },
   routeInfo: {
     position: 'absolute',
-    top: 10,
-    backgroundColor: '#00000090',
+    top: 0,
+    backgroundColor: '#68095f',
     padding: 10,
-    borderRadius: 8,
     zIndex: 1,
+    width: '100%'
   },
   infoText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontFamily: 'CartoonBold',
   },
+  callText: {
+    fontSize: 16,
+    color: '#ffff00', // Make it look clickable
+    textDecorationLine: 'underline', // Add underline for better UX
+  },
   sliderContainer: {
     position: 'absolute',
-    bottom: 50,
-    left: 20,
-    right: 20,
+    bottom: 0,
     height: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 30,
-    backgroundColor: '#1E90FF',
+    width: '100%',
     paddingHorizontal: 10,
   },
   slider: {
@@ -534,7 +544,7 @@ const styles = StyleSheet.create({
   sliderText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1E90FF',
+    color: 'black',
     fontFamily: 'CartoonBold',
   },
   modalContainer: {
@@ -546,7 +556,7 @@ const styles = StyleSheet.create({
   modalContent: {
     width: 300,
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: '#68095F',
     borderRadius: 10,
     alignItems: 'center',
     elevation: 5,
@@ -554,24 +564,24 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#f80c4c',
+    color: '#ffff00',
     marginBottom: 10,
   },
   modalText: {
     fontSize: 18,
-    color: '#333',
+    color: 'white',
     marginBottom: 10,
   },
   modalEarning: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#1E90FF',
+    color: 'white',
     marginBottom: 20,
   },
   button: {
     marginTop: 10,
     padding: 10,
-    backgroundColor: '#1E90FF',
+    backgroundColor: '#9f0d91',
     borderRadius: 5,
   },
   buttonText: {
@@ -579,9 +589,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   errorText: {
-    color: 'red',
+    color: '#ffff00',
     marginBottom: 10,
   },
+  input: {
+    color: 'white',
+    textAlign: 'center'
+  }
 });
 
 export default CyrMapDirection;

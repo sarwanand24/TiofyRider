@@ -1,21 +1,38 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome6';
 
 const More = (props) => {
+
+    const handleLogout = async() => {
+       await AsyncStorage.removeItem('token');
+       await AsyncStorage.removeItem('Riderdata');
+        props.navigation.replace('Auth')
+    }
+    
     return (
         <View style={styles.container}>
+                   <StatusBar hidden={true} />
             <Text style={styles.headerText}>More</Text>
             <View style={styles.optionsContainer}>
                 <TouchableOpacity 
-                onPress={()=>{props.navigation.push('RiderProfile')}}
+                onPress={()=>{ props.navigation.push('RiderProfile')} }
                 style={styles.optionButton}>
-                    <Icon name='user' size={22} color='#007AFF' style={styles.icon} />
+                    <Icon name='user' size={22} color='#ffff00' style={styles.icon} />
                     <Text style={styles.optionText}>Profile</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.optionButton}>
-                    <Icon name='headset' size={22} color='#007AFF' style={styles.icon} />
+                <TouchableOpacity 
+                   onPress={()=>{ props.navigation.push('HelpSupportScreen')} }
+                style={styles.optionButton}>
+                    <Icon name='headset' size={22} color='#ffff00' style={styles.icon} />
                     <Text style={styles.optionText}>Help & Support</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                   onPress={handleLogout}
+                style={styles.optionButton}>
+                    <Icon name='right-from-bracket' size={22} color='#ffff00' style={styles.icon} />
+                    <Text style={styles.optionText}>Logout</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -25,18 +42,18 @@ const More = (props) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f7f7f7',
+        backgroundColor: '#68095F',
         padding: 20,
     },
     headerText: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#333',
+        color: '#ffff00',
         marginBottom: 20,
         textAlign: 'center',
     },
     optionsContainer: {
-        backgroundColor: 'white',
+        backgroundColor: '#9f0d91',
         borderRadius: 10,
         paddingVertical: 15,
         paddingHorizontal: 10,
@@ -52,7 +69,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         marginVertical: 8,
         borderRadius: 8,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: '#68095f',
         shadowColor: '#000',
         shadowOpacity: 0.1,
         shadowRadius: 5,
@@ -63,7 +80,7 @@ const styles = StyleSheet.create({
     },
     optionText: {
         fontSize: 18,
-        color: '#333',
+        color: 'white',
         fontWeight: '500',
     },
 });

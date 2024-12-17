@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ScrollView, TouchableOpacity, Modal, StatusBar } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Loading from '../Loading';
@@ -74,6 +74,7 @@ const Food = () => {
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
+                   <StatusBar hidden={true} />
             <Text style={styles.title}>Your Foody Ride History</Text>
             
             <View style={styles.filterContainer}>
