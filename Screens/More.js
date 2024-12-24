@@ -13,7 +13,7 @@ const More = (props) => {
     
     return (
         <View style={styles.container}>
-                   <StatusBar hidden={true} />
+                   <StatusBar color={'transparent'} backgroundColor={'#68095f'} />
             <Text style={styles.headerText}>More</Text>
             <View style={styles.optionsContainer}>
                 <TouchableOpacity 

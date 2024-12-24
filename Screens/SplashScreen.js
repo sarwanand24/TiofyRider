@@ -31,7 +31,7 @@ const SplashScreen = () => {
 
   return (
     <View style={styles.container}>
-             <StatusBar hidden={true} />
+             <StatusBar color={'transparent'} backgroundColor={'#68095f'} />
       <Image source={require('../assets/TiofyLogo.png')} style={styles.logo} />
     </View>
   );

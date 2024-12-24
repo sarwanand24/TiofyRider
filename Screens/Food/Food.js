@@ -74,7 +74,7 @@ const Food = () => {
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
-                   <StatusBar hidden={true} />
+                   <StatusBar color={'transparent'} backgroundColor={'#68095f'} />
             <Text style={styles.title}>Your Foody Ride History</Text>
             
             <View style={styles.filterContainer}>

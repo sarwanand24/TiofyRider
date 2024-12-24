@@ -71,7 +71,7 @@ const PeakZonesScreen = ({ route }) => {
 
   return (
     <View style={styles.container}>
-             <StatusBar hidden={true} />
+             <StatusBar color={'transparent'} backgroundColor={'#68095f'} />
       <Text style={styles.title}>Peak Zones</Text>
       <View style={styles.buttonContainer}>
     <TouchableOpacity

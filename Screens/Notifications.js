@@ -17,7 +17,7 @@ const Notifications = ({onMarkSeen, onUpdateBadge}) => {
 
   return (
     <View style={styles.container}>
-          <StatusBar hidden={true} />
+          <StatusBar color={'transparent'} backgroundColor={'#68095f'} />
       <Text style={styles.header}>Notifications</Text>
       {notifications.length > 0 ? (
         <FlatList

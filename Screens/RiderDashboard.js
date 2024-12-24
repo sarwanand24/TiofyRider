@@ -14,6 +14,8 @@ import axios from 'axios';
 import socket from '../utils/Socket';
 import { Switch } from 'react-native-paper';
 import LottieView from 'lottie-react-native';
+import notifee, { AuthorizationStatus } from '@notifee/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Main Dashboard Component
 export default function RiderDashboard(props) {
@@ -148,6 +150,26 @@ export default function RiderDashboard(props) {
 
     fetchUndeliveredCyrOrders();
   }, []);
+
+  useEffect(() => {
+    // Automatically request notification permissions on screen load
+    requestNotificationPermission();
+  }, []);
+
+  const requestNotificationPermission = async () => {
+    const settings = await notifee.getNotificationSettings();
+  
+    if (settings.authorizationStatus === AuthorizationStatus.AUTHORIZED) {
+      console.log('Notification permissions already granted.');
+    } else {
+      const newSettings = await notifee.requestPermission();
+      if (newSettings.authorizationStatus === AuthorizationStatus.AUTHORIZED) {
+        console.log('Notification permissions granted.');
+      } else {
+        console.log('Notification permissions denied.');
+      }
+    }
+  };  
 
   const getLocation = () => {
     if (Platform.OS === 'android') {
@@ -384,7 +406,6 @@ export default function RiderDashboard(props) {
         riderEarning: order.riderEarning,
       });
     }
-
     console.log('Emitted RiderAcceptedOrder:', order);
     setLoading(true);
     setRefresh(true); // Trigger refresh or update state as needed
@@ -462,9 +483,12 @@ export default function RiderDashboard(props) {
 
   // Simulate receiving socket data
   useEffect(() => { // Ensure to set up your socket connection properly
-    socket.on('OrderAcceptedbyRider', (data) => {
-      console.log('checking12345 rani---------------->', data, Riderdata._id)
-      if (data.riderId == Riderdata?._id) {
+    socket.on('OrderAcceptedbyRider', async(data) => {
+      let rider = await AsyncStorage.getItem('Riderdata')
+      console.log('Rider..', rider)
+      const riderdata = JSON.parse(rider);
+      console.log('checking12345 rani foood---------------->', data, riderdata._id)
+      if (data.riderId == riderdata?._id) {
         setOrderOf('Foody')
         setOrderId(data.orderId);
         console.log('Go to Map--------------------');
@@ -479,9 +503,12 @@ export default function RiderDashboard(props) {
   }, []);
 
   useEffect(() => { // Ensure to set up your socket connection properly
-    socket.on('CyrRideAcceptedbyRider', (data) => {
-      console.log('checking12345 rani---------------->', data, Riderdata._id)
-      if (data.riderId == Riderdata?._id) {
+    socket.on('CyrRideAcceptedbyRider', async(data) => {
+      let rider = await AsyncStorage.getItem('Riderdata')
+      console.log('Rider..', rider)
+      const riderdata = JSON.parse(rider);
+      console.log('checking12345 rani cyr---------------->', data, riderdata._id)
+      if (data.riderId == riderdata?._id) {
         setOrderOf('Cyr')
         setOrderId(data.orderId);
         console.log('Go to Map--------------------');
@@ -500,10 +527,10 @@ export default function RiderDashboard(props) {
     if (map && orderId) {
       setLoading(false);
       if (orderOf == 'Foody') {
-        props.navigation.push("FoodMapDirection", { orderId, userInfo, reachedRestro: false });
+        props.navigation.push("FoodMapDirection", { orderId, reachedRestro: false });
       }
       else if (orderOf == 'Cyr') {
-        props.navigation.push("CyrMapDirection", { orderId, userInfo });
+        props.navigation.push("CyrMapDirection", { orderId });
       }
     }
   }, [map, orderId]);
@@ -514,8 +541,7 @@ export default function RiderDashboard(props) {
 
   return (
     <View style={styles.container}>
-      <StatusBar hidden={true} />
-      
+      <StatusBar color={'transparent'} backgroundColor={'#68095f'} />
       {Riderdata?.verified ? 
        (
         <ScrollView>
@@ -632,7 +658,6 @@ export default function RiderDashboard(props) {
               onPress={() =>
                 props.navigation.push('FoodMapDirection', {
                   orderId: order._id,
-                  userId: order.orderedBy,
                   reachedRestro: false
                 })
               }
@@ -650,7 +675,6 @@ export default function RiderDashboard(props) {
               onPress={() =>
                 props.navigation.push('CyrMapDirection', {
                   orderId: order._id,
-                  userId: order.bookedBy
                 })
               }
             >

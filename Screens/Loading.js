@@ -12,7 +12,7 @@ const Loading = () => {
 
     return (
         <View style={styles.loading}>
-                   <StatusBar hidden={true} />
+                   <StatusBar color={'transparent'} backgroundColor={'#68095f'} />
            <LottieView source={require('../assets/Animations/loading.json')}
            style={styles.lottie} autoPlay loop />
         </View>

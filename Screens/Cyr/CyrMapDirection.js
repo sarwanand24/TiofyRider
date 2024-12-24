@@ -15,7 +15,7 @@ const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 
 function CyrMapDirection({ route }) { // Destructuring orderId from props
 
-  const { orderId, userInfo } = route.params;
+  const { orderId } = route.params;
   const navigation = useNavigation();
 
   const [mapInfo, setMapInfo] = useState({
@@ -106,8 +106,8 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
     if (locPermissionDenied === 'granted') {
       try {
         const { latitude, longitude, heading } = await getCurrentLocation();
-        const userId = userInfo?.userId || 'null';
-        socket.emit('RiderCurrentLocation', { latitude, longitude, heading, userId });
+        // const userId = userInfo?.userId || 'null';
+        // socket.emit('RiderCurrentLocation', { latitude, longitude, heading, userId });
         setMapInfo(prev => ({
           ...prev,
           Rider: { latitude, longitude, heading }
@@ -148,7 +148,6 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
       const riderLatLng = orderData.Rider[0] || { latitude: 0, longitude: 0 };
 
       setOrderInfo(orderData)
-      console.log('check rani boor phata boor jo nikhil phada', 'rani ka boor ka baal', orderData)
       setEarning(data.data?.riderEarning)
 
       setMapInfo({
@@ -359,7 +358,7 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
 
   return (
     <View style={styles.container}>
-             <StatusBar hidden={true} />
+             <StatusBar color={'transparent'} backgroundColor={'#68095f'} />
       <MapView
         style={styles.map}
         initialRegion={{
@@ -480,6 +479,7 @@ function CyrMapDirection({ route }) { // Destructuring orderId from props
               keyboardType="numeric"
               maxLength={4}
               placeholder="Enter 4-digit OTP"
+              placeholderTextColor={'white'}
             />
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
             <TouchableOpacity style={styles.button} onPress={verifyOtpAndDeliverOrder}>

@@ -10,7 +10,7 @@ const HelpSupportScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
-             <StatusBar hidden={true} />
+             <StatusBar color={'transparent'} backgroundColor={'#68095f'} />
       <Text style={styles.header}>Help & Support</Text>
       <Text style={styles.description}>
         Welcome to our Help & Support center! We're here to assist you with any issues or questions you may have. 

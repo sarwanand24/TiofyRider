@@ -15,7 +15,7 @@ const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 
 function FoodMapDirection({ route }) { // Destructuring orderId from props
 
-  const { orderId, userInfo, reachedRestro } = route.params;
+  const { orderId, reachedRestro } = route.params;
   const navigation = useNavigation();
 
   const [mapInfo, setMapInfo] = useState({
@@ -107,8 +107,8 @@ function FoodMapDirection({ route }) { // Destructuring orderId from props
     if (locPermissionDenied === 'granted') {
       try {
         const { latitude, longitude, heading } = await getCurrentLocation();
-        const userId = userInfo?.userId || 'null';
-        socket.emit('RiderCurrentLocation', { latitude, longitude, heading, userId });
+        // const userId = userInfo?.userId || 'null';
+        // socket.emit('RiderCurrentLocation', { latitude, longitude, heading, userId });
         setMapInfo(prev => ({
           ...prev,
           Rider: { latitude, longitude, heading }
@@ -413,7 +413,7 @@ function FoodMapDirection({ route }) { // Destructuring orderId from props
 
   return (
     <View style={styles.container}>
-             <StatusBar hidden={true} />
+             <StatusBar color={'transparent'} backgroundColor={'#68095f'} />
       <MapView
         style={styles.map}
         initialRegion={{
@@ -528,6 +528,7 @@ function FoodMapDirection({ route }) { // Destructuring orderId from props
               keyboardType="numeric"
               maxLength={4}
               placeholder="Enter 4-digit OTP"
+              placeholderTextColor={'white'}
             />
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
             <TouchableOpacity style={styles.button} onPress={verifyOtpAndDeliverOrder}>

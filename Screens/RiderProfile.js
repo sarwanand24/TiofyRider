@@ -77,7 +77,7 @@ const RiderProfile = () => {
 
   return (
     <ScrollView style={styles.container}>
-             <StatusBar hidden={true} />
+             <StatusBar color={'transparent'} backgroundColor={'#68095f'} />
       <View style={styles.header}>
       <Image
   source={{

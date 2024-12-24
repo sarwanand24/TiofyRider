@@ -222,7 +222,7 @@ const Signup = (props) => {
 
   return (
     <LinearGradient colors={['#68095f', '#9f0d91']} style={styles.container}>
-             <StatusBar hidden={true} />
+             <StatusBar color={'transparent'} backgroundColor={'#68095f'} />
       <ScrollView>
         <KeyboardAvoidingView>
         <Text style={styles.title}>Signup</Text>
